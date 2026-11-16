@@ -1,0 +1,77 @@
+#+TITLE: mkstack開発作業記録
+#+AUTHOR: Shigeto R. Nishitani
+#+LANGUAGE: jp
+#+OPTIONS: ^:{} H:4 toc:t num:2
+#+STARTUP: indent overview
+
+* この文書の目的
+
+この文書には，独立gem =mkstack= の設計判断，移植手順，実施結果を時系列で記録する．
+利用者向けの簡潔な説明はルートの =README.md= に置き，ここには開発過程を残す．
+
+* 開発方針
+
+- =mkstack= は単独実行可能なCLI gemとして開発する．
+- 将来は，公開APIを薄いadapterから呼び出して =hc mkstack= に統合できる構造にする．
+- Ruby gemの標準配置を守り，実装とテストのパスを鏡写しにする．
+- 旧 =c0_mk_stack_dir= は参照用archiveとして固定し，archive内では開発しない．
+- 旧実装の挙動を特徴付けるtestを先に作り，機能を小さな責務へ分けながら移植する．
+- =docs/= は開発資料であり，配布gemには含めない．
+
+* directory構成
+
+#+begin_example
+mkstack/
+├── exe/
+│   └── mkstack                    # CLI entry point
+├── lib/
+│   ├── mkstack.rb                 # public load point
+│   └── mkstack/
+│       └── version.rb
+├── test/
+│   ├── test_helper.rb
+│   └── mkstack/
+│       └── version_test.rb        # lib/mkstack/version.rbに対応
+├── sig/
+│   └── mkstack.rbs
+├── docs/
+│   ├── readme_mk_mkstack.org      # この作業記録
+│   └── archive/
+│       └── c0_mk_stack_dir/       # 旧projectの固定snapshot
+├── bin/                           # 開発支援用script
+├── Gemfile
+├── Rakefile
+└── mkstack.gemspec
+#+end_example
+
+機能の移植時には，責務に応じて次のように同じ相対pathを用いる．
+
+#+begin_example
+lib/mkstack/command.rb       <-> test/mkstack/command_test.rb
+lib/mkstack/configuration.rb <-> test/mkstack/configuration_test.rb
+lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
+#+end_example
+
+実装がまだ存在しない機能の空directoryや空fileは作らず，最初のtestと同時に追加する．
+
+* 作業履歴
+
+** 2026-11-17 directory構成の初期整理
+
+- Bundlerのscaffoldを独立gemのrootとして維持した．
+- testを =test/mkstack/= 以下へ移し，実装との対応関係を明確にした．
+- scaffoldに含まれていた意図的な失敗testを除去した．
+- 旧projectのcommit =bd6633eb7a4602c01672ef8ab027383d06424b65= を
+  =docs/archive/c0_mk_stack_dir/= に展開した．
+- archiveの由来を =docs/archive/README.org= に記録した．
+- =docs/= をgem packageの対象外にした．
+- scaffoldの未確定URL metadataを除き，gemをbuildできる状態にした．
+- =bundle exec rake test= と =bundle exec rake build= の成功を確認した．
+- buildしたgemに =docs/=，=test/=，=bin/= が含まれないことを確認した．
+
+* 次の作業候補
+
+1. 旧CLIの入口と主要な利用例を洗い出す．
+2. 最小の =mkstack= command仕様をtestとして記述する．
+3. =exe/mkstack= を薄いentry pointとし，処理を =lib/mkstack/= 以下へ移す．
+4. 旧scriptを責務別に移植し，対応するunit testを追加する．

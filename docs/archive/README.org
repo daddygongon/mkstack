@@ -1,0 +1,19 @@
+#+TITLE: 旧c0_mk_stack_dir archive
+#+LANGUAGE: jp
+
+* 出典
+
+- 元project: =/Users/bob/Desktop/lecture_26f/multi_scale/c0_mk_stack_dir=
+- 元repository: =git@github.com:TeamNishitani/c0_mk_stack_dir.git=
+- branch: =main=
+- commit: =bd6633eb7a4602c01672ef8ab027383d06424b65=
+- snapshot作成日: 2026-11-17
+
+* 保存方法
+
+=git archive HEAD= でcommit済みの全fileを
+=docs/archive/c0_mk_stack_dir/= に展開した固定snapshotである．元projectは
+submoduleであり，その =.git= は親repository内部を指す移植不能なpointerなので収録していない．
+
+このdirectoryは移植元の参照専用とし，修正しない．実装は =lib/mkstack/=，testは
+=test/mkstack/=，開発判断と作業履歴は =docs/readme_mk_mkstack.org= に置く．
