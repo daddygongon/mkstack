@@ -1,0 +1,241 @@
+# frozen_string_literal: true
+
+require "fileutils"
+require "test_helper"
+require "tmpdir"
+require "yaml"
+
+describe Mkstack::CLI do
+  COMMANDS = %w[kick_off mkdir mk_light_table mk_link mk_canvas rsync_public push].freeze
+
+  def build_cli(options = {})
+    Mkstack::CLI.new([], options, {})
+  end
+
+  def write_configuration(directory)
+    File.write(
+      File.join(directory, ".hc_config.yaml"),
+      YAML.dump(
+        year: 2026,
+        lecture: "demo",
+        source_html: "demo.html",
+        glob_extensions: "c*/*.html",
+        public_repository_dir: "../demo_public",
+        shared_dirs: []
+      )
+    )
+  end
+
+  it "旧Rake taskと同名のsubcommandを公開する" do
+    COMMANDS.each do |command|
+      _(Mkstack::CLI.tasks).must_include command
+    end
+  end
+
+  it "-Tでsubcommand一覧を表示する" do
+    output, = capture_io { Mkstack::CLI.start(["-T"]) }
+
+    COMMANDS.each do |command|
+      _(output).must_match(/^\s+\S+\s+#{Regexp.escape(command)}(?:\s|$)/)
+    end
+  end
+
+  describe "kick_off" do
+    it "root用templateを作業directoryへ複製する" do
+      Dir.mktmpdir do |directory|
+        capture_io { Mkstack::CLI.start(["kick_off", "-C", directory]) }
+
+        %w[.style.css .rsync_filter .theme.css].each do |name|
+          actual = File.join(directory, name)
+          _(File.exist?(actual)).must_equal true
+          _(File.binread(actual)).must_equal File.binread(Mkstack.template_path(name))
+        end
+      end
+    end
+  end
+
+  describe "mkdir" do
+    it "section directoryと基本templateを作る" do
+      Dir.mktmpdir do |directory|
+        capture_io { Mkstack::CLI.start(["mkdir", "c1_section", "-C", directory]) }
+
+        section = File.join(directory, "c1_section")
+        %w[readme.org dummy_icon.png .style.css .style_w_link_button.css .theme.css .rsync_filter].each do |name|
+          _(File.exist?(File.join(section, name))).must_equal true
+        end
+      end
+    end
+
+    it "既存directoryを上書きしない" do
+      Dir.mktmpdir do |directory|
+        FileUtils.mkdir_p(File.join(directory, "c1_section"))
+        cli = build_cli(directory: directory)
+
+        error = _ { cli.mkdir("c1_section") }.must_raise Mkstack::Error
+        _(error.message).must_include "すでに存在"
+      end
+    end
+  end
+
+  describe "mk_light_table" do
+    it "選択した作業directoryにYAMLとHTMLを生成する" do
+      Dir.mktmpdir do |directory|
+        write_configuration(directory)
+        FileUtils.mkdir_p(File.join(directory, "c1_section"))
+        File.write(
+          File.join(directory, "c1_section", "readme.html"),
+          "<html><head><title>Demo</title></head><body></body></html>"
+        )
+
+        capture_subprocess_io { Mkstack::CLI.start(["mk_light_table", "-C", directory]) }
+
+        %w[light_table.yaml demo.html .style.css dummy_icon.png].each do |name|
+          _(File.exist?(File.join(directory, name))).must_equal true
+        end
+        _(File.read(File.join(directory, "light_table.yaml"))).must_include "c1_section/readme.html"
+      end
+    end
+
+    it "-Lと--no-generate-htmlをscriptへ反映する" do
+      Dir.mktmpdir do |directory|
+        calls = []
+        runner = Object.new
+        runner.define_singleton_method(:run) { |*arguments| calls << arguments }
+        cli = build_cli(directory: directory, level: 4, generate_html: false)
+        cli.instance_variable_set(:@runner, runner)
+        cli.define_singleton_method(:ensure_configuration!) { true }
+
+        capture_io { cli.mk_light_table }
+
+        _(calls).must_equal [["auto_mk_light_table.rb", "-L", 4]]
+        _(File.exist?(File.join(directory, ".style.css"))).must_equal true
+      end
+    end
+  end
+
+  describe "mk_link" do
+    it "link更新scriptを呼び出す" do
+      calls = []
+      runner = Object.new
+      runner.define_singleton_method(:run) { |*arguments| calls << arguments }
+      cli = build_cli
+      cli.instance_variable_set(:@runner, runner)
+      cli.define_singleton_method(:ensure_configuration!) { true }
+
+      cli.mk_link
+
+      _(calls).must_equal [["mk_link.rb"]]
+    end
+  end
+
+  describe "mk_canvas" do
+    it "scriptとhc viewをRake taskと同じ順序で実行する" do
+      events = []
+      runner = Object.new
+      runner.define_singleton_method(:run) { |*arguments| events << [:script, *arguments] }
+      cli = build_cli(level: 4, view: true)
+      cli.instance_variable_set(:@runner, runner)
+      cli.define_singleton_method(:ensure_configuration!) { true }
+      cli.define_singleton_method(:run_external) { |*command| events << [:external, *command] }
+
+      cli.mk_canvas
+
+      _(events).must_equal [
+        [:script, "auto_mk_light_table.rb", "-L", 4],
+        [:script, "mk_dir_node.rb"],
+        [:external, "hc", "view", "-n", ".semi_lattice/dir_node_edge.yaml"],
+        [:script, "mk_canvas.rb"],
+        [:external, "hc", "view"]
+      ]
+    end
+
+    it "--no-viewではhcを起動しない" do
+      events = []
+      runner = Object.new
+      runner.define_singleton_method(:run) { |*arguments| events << arguments }
+      cli = build_cli(level: 3, view: false)
+      cli.instance_variable_set(:@runner, runner)
+      cli.define_singleton_method(:ensure_configuration!) { true }
+      cli.define_singleton_method(:run_external) { |*command| flunk("unexpected: #{command.join(" ")}") }
+
+      cli.mk_canvas
+
+      _(events).must_equal [
+        ["auto_mk_light_table.rb", "-L", 3],
+        ["mk_dir_node.rb"],
+        ["mk_canvas.rb"]
+      ]
+    end
+  end
+
+  describe "rsync_public" do
+    it "public repositoryへの同期を委譲する" do
+      calls = []
+      synchronizer = Object.new
+      synchronizer.define_singleton_method(:public_repository) { calls << :public_repository }
+      cli = build_cli
+      cli.define_singleton_method(:sync) do |marker|
+        calls << [:sync, marker]
+        synchronizer
+      end
+
+      cli.rsync_public("dry_run")
+
+      _(calls).must_equal [[:sync, "dry_run"], :public_repository]
+    end
+
+    it "不正なRake互換markerを拒否する" do
+      cli = build_cli
+
+      error = _ { cli.send(:validate_dry_run_marker!, "unknown") }.must_raise Mkstack::Error
+      _(error.message).must_include "dry_run"
+    end
+  end
+
+  describe "push" do
+    it "server同期後に公開URLを開く" do
+      events = []
+      synchronizer = Object.new
+      synchronizer.define_singleton_method(:server) do
+        events << :server
+        "https://example.test/demo/canvas.html"
+      end
+      cli = build_cli(dry_run: false)
+      cli.define_singleton_method(:sync) { |_marker| synchronizer }
+      cli.define_singleton_method(:run_external) { |*command| events << command }
+
+      cli.push
+
+      _(events).must_equal [
+        :server,
+        ["open", "https://example.test/demo/canvas.html"]
+      ]
+    end
+
+    it "dry_run markerではbrowserを開かない" do
+      events = []
+      synchronizer = Object.new
+      synchronizer.define_singleton_method(:server) { events << :server }
+      cli = build_cli(dry_run: false)
+      cli.define_singleton_method(:sync) { |_marker| synchronizer }
+      cli.define_singleton_method(:run_external) { |*command| flunk("unexpected: #{command.join(" ")}") }
+
+      cli.push("dry_run")
+
+      _(events).must_equal [:server]
+    end
+
+    it "--dry-runでもbrowserを開かない" do
+      events = []
+      synchronizer = Object.new
+      synchronizer.define_singleton_method(:server) { events << :server }
+      cli = build_cli(dry_run: true)
+      cli.define_singleton_method(:sync) { |_marker| synchronizer }
+      cli.define_singleton_method(:run_external) { |*command| flunk("unexpected: #{command.join(" ")}") }
+
+      cli.push
+
+      _(events).must_equal [:server]
+    end
+  end
+end

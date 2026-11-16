@@ -75,3 +75,22 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
 2. 最小の =mkstack= command仕様をtestとして記述する．
 3. =exe/mkstack= を薄いentry pointとし，処理を =lib/mkstack/= 以下へ移す．
 4. 旧scriptを責務別に移植し，対応するunit testを追加する．
+
+** 2026-11-17 Thor CLIへの初期移植
+
+- runtime dependencyとしてThorを追加した．
+- =exe/mkstack= を =Mkstack::CLI= の薄いentry pointにした．
+- 旧Rake taskに対応する =kick_off=，=mkdir=，=mk_light_table=，=mk_link=，
+  =mk_canvas=，=rsync_public=，=push= subcommandを追加した．
+- =rake TASK dry_run= 相当の位置引数と =--dry-run= optionの両方を維持した．
+- 配布用assetを =lib/mkstack/templates/=，移植中のscriptを
+  =lib/mkstack/scripts/= へ配置した．
+- 作業directoryを指定する共通option =-C PATH= と，Rake互換の一覧表示 =-T= を追加した．
+- 旧 =colorize= と =command_line= への依存を除き，Thorと標準libraryだけで構成した．
+- 全subcommandのMinitest::Specを =test/mkstack/cli_commands_test.rb= に追加した．
+  file生成commandは一時directoryで実行し，外部commandを伴う処理はtest doubleで
+  呼出順とoptionを検証する．
+- =minitest-reporters= の =ProgressReporter= を導入し，実行中のtest名，進捗bar，
+  完了率，経過時間，残り時間をcolor付きで表示するようにした．
+- colorを使えない環境では =MINITEST_REPORTERS_MONO=1 bundle exec rake test= で
+  無色表示に切り替えられる．

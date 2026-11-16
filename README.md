@@ -26,11 +26,19 @@ gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
 
 ## Usage
 
-CLIの仕様は，旧実装をテストで特徴付けながら定めます．現時点の実行入口は次です．
+Thorを使ったCLIとして，旧Rake taskと同名のsubcommandを提供します．
 
 ```bash
-bundle exec exe/mkstack
+bundle exec exe/mkstack help
+bundle exec exe/mkstack kick_off
+bundle exec exe/mkstack mkdir c1_new_section
+bundle exec exe/mkstack mk_light_table -L 3
+bundle exec exe/mkstack rsync_public --dry-run
+bundle exec exe/mkstack push dry_run
 ```
+
+`mkstack -T`でもsubcommand一覧を表示できます．別の作業directoryを対象にする場合は，
+共通option `-C PATH`を指定します．
 
 ## Development
 
