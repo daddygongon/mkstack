@@ -9,6 +9,19 @@ module Mkstack
 
     attr_reader :root
 
+    def self.find_root(start_directory)
+      directory = File.expand_path(start_directory)
+
+      loop do
+        return directory if File.file?(File.join(directory, FILE_NAME))
+
+        parent = File.dirname(directory)
+        return nil if parent == directory
+
+        directory = parent
+      end
+    end
+
     def initialize(root)
       @root = File.expand_path(root)
     end
@@ -21,9 +34,8 @@ module Mkstack
     end
 
     def load
-      created = install
-      if created
-        raise Error, "#{path}を作成しました．dummy値を編集してから，もう一度実行してください．"
+      unless File.file?(path)
+        raise Error, "#{FILE_NAME}が見つかりません．project rootでmkstack kick_offを実行してください．"
       end
 
       YAML.safe_load_file(path, permitted_classes: [Symbol], aliases: true) || {}

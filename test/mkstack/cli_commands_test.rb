@@ -198,6 +198,42 @@ describe Mkstack::CLI do
       _(calls).must_equal [[:sync, "dry_run"], :public_repository]
     end
 
+    it "nested directoryから親projectの設定とrootを使う" do
+      Dir.mktmpdir do |project_root|
+        nested = File.join(project_root, "c1_section", "images")
+        FileUtils.mkdir_p(nested)
+        write_configuration(project_root)
+        captured = nil
+        synchronizer = Object.new
+        synchronizer.define_singleton_method(:public_repository) { true }
+
+        factory = lambda do |**arguments|
+          captured = arguments
+          synchronizer
+        end
+
+        Mkstack::Sync.stub(:new, factory) do
+          build_cli(directory: nested, dry_run: true).rsync_public
+        end
+
+        _(captured[:root]).must_equal project_root
+        _(captured[:config][:lecture]).must_equal "demo"
+        _(captured[:dry_run]).must_equal true
+        _(File.exist?(File.join(nested, ".hc_config.yaml"))).must_equal false
+      end
+    end
+
+    it "設定が見つからない場合は現在地へ生成しない" do
+      Dir.mktmpdir do |directory|
+        cli = build_cli(directory: directory, dry_run: true)
+
+        error = _ { cli.rsync_public }.must_raise Mkstack::Error
+
+        _(error.message).must_include ".hc_config.yaml"
+        _(File.exist?(File.join(directory, ".hc_config.yaml"))).must_equal false
+      end
+    end
+
     it "不正なRake互換markerを拒否する" do
       cli = build_cli
 

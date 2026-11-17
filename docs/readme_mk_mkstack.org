@@ -98,3 +98,6 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
   正本へのsymbolic linkとし，code内に別のdefault値を持たせない．
 - =kick_off= は =.hc_config.yaml= を生成し，dummy値を実環境の値へ編集するよう
   警告する．既存設定は上書きしない．
+- 通常commandは現在directoryから親へ遡り，最も近い =.hc_config.yaml= の
+  所在directoryをproject rootとして使う．設定が見つからない場合は自動生成せず，
+  =kick_off= を案内する．

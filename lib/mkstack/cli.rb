@@ -28,7 +28,7 @@ module Mkstack
     class_option :directory,
                  aliases: "-C",
                  type: :string,
-                 desc: "作業directoryを指定する（default: current directory）"
+                 desc: "project rootの探索開始directory（default: current directory）"
 
     desc "kick_off", "設定fileとstack directoryの初期style fileを配置する"
     def kick_off
@@ -105,7 +105,11 @@ module Mkstack
 
     no_commands do
       def root
-        @root ||= File.expand_path(options[:directory] || Dir.pwd)
+        @root ||= Configuration.find_root(start_directory) || start_directory
+      end
+
+      def start_directory
+        @start_directory ||= File.expand_path(options[:directory] || Dir.pwd)
       end
 
       def configuration

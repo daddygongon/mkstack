@@ -44,6 +44,10 @@ bundle exec exe/mkstack push dry_run
 file名，公開先path，server URLへ編集してください．既存の`.hc_config.yaml`は
 上書きしません．
 
+通常のsubcommandは，現在directoryから親へ遡って最も近い`.hc_config.yaml`を探し，
+その所在directoryをproject rootとして実行します．設定fileが見つからない場合，
+自動生成は行わず，`kick_off`を案内して終了します．
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

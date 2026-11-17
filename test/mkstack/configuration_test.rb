@@ -4,16 +4,36 @@ require "test_helper"
 require "tmpdir"
 
 describe Mkstack::Configuration do
-  it "missing設定を正本templateから生成して編集を要求する" do
+  it "現在地から親へ遡って最も近い設定fileを探す" do
+    Dir.mktmpdir do |directory|
+      nested = File.join(directory, "c1_section", "images")
+      FileUtils.mkdir_p(nested)
+      File.write(File.join(directory, ".hc_config.yaml"), "---\n:lecture: demo\n")
+
+      _(Mkstack::Configuration.find_root(nested)).must_equal directory
+    end
+  end
+
+  it "nested projectでは最も近い設定fileを選ぶ" do
+    Dir.mktmpdir do |directory|
+      nested_project = File.join(directory, "nested")
+      child = File.join(nested_project, "section")
+      FileUtils.mkdir_p(child)
+      File.write(File.join(directory, ".hc_config.yaml"), "---\n:lecture: parent\n")
+      File.write(File.join(nested_project, ".hc_config.yaml"), "---\n:lecture: nested\n")
+
+      _(Mkstack::Configuration.find_root(child)).must_equal nested_project
+    end
+  end
+
+  it "設定fileがなければ生成せずerrorにする" do
     Dir.mktmpdir do |directory|
       configuration = Mkstack::Configuration.new(directory)
 
       error = _ { configuration.load }.must_raise Mkstack::Error
 
-      _(error.message).must_include "dummy値を編集"
-      _(File.binread(configuration.path)).must_equal(
-        File.binread(Mkstack.template_path(".hc_config.yaml"))
-      )
+      _(error.message).must_include "kick_off"
+      _(File.exist?(configuration.path)).must_equal false
     end
   end
 
