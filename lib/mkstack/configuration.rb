@@ -13,11 +13,20 @@ module Mkstack
       @root = File.expand_path(root)
     end
 
-    def load
-      YAML.safe_load_file(path, permitted_classes: [Symbol], aliases: true) || {}
-    rescue Errno::ENOENT
+    def install
+      return false if File.exist?(path)
+
       FileUtils.cp(Mkstack.template_path(FILE_NAME), path)
-      raise Error, "#{path}を作成しました．内容を編集してから，もう一度実行してください．"
+      true
+    end
+
+    def load
+      created = install
+      if created
+        raise Error, "#{path}を作成しました．dummy値を編集してから，もう一度実行してください．"
+      end
+
+      YAML.safe_load_file(path, permitted_classes: [Symbol], aliases: true) || {}
     rescue Psych::SyntaxError => e
       raise Error, "#{path}を読み込めません: #{e.message}"
     end

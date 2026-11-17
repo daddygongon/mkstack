@@ -30,11 +30,18 @@ module Mkstack
                  type: :string,
                  desc: "作業directoryを指定する（default: current directory）"
 
-    desc "kick_off", "stack directoryの初期style fileを配置する"
+    desc "kick_off", "設定fileとstack directoryの初期style fileを配置する"
     def kick_off
+      config_created = configuration.install
       copy_templates(%w[.style.css .rsync_filter .theme.css], root)
       say "Kick off hyper card setups"
       File.readlines(Mkstack.template_path("readme.org")).last(3).each { |line| say line.chomp }
+      say
+      if config_created
+        say "注意: #{configuration.path}をdummy値で作成しました．実際のpath，file名，URLへ編集してください．", :yellow
+      else
+        say "注意: #{configuration.path}は既存のため上書きしていません．設定内容を確認してください．", :yellow
+      end
     end
 
     desc "mkdir [DIR]", "新しいsubdirectoryと基本templateを作る"

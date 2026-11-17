@@ -40,6 +40,10 @@ bundle exec exe/mkstack push dry_run
 `mkstack -T`でもsubcommand一覧を表示できます．別の作業directoryを対象にする場合は，
 共通option `-C PATH`を指定します．
 
+`kick_off`は`.hc_config.yaml`をdummy値で生成します．生成後に，実際の講義名，HTML
+file名，公開先path，server URLへ編集してください．既存の`.hc_config.yaml`は
+上書きしません．
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

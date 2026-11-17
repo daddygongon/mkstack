@@ -1,10 +1,10 @@
 ---
 :year: 2026
-:lecture: intro_info
-:source_html: intro_info_26s.html
-:glob_extensions: c*/**/*.html
-:public_repository_dir: ../intro_info_public
+:lecture: demo
+:source_html: demo.html
+:glob_extensions: demo*/**/*.html
+:public_repository_dir: ../demo_public
 :shared_dirs: []
 :server_info:
-  :server_ssh_path: nishitani@ist.ksc.kwansei.ac.jp:~/public_html
-  :server_url: https://ist.ksc.kwansei.ac.jp/~nishitani/Lectures
+  :server_ssh_path: demo@example.com:~/public_html
+  :server_url: https://example.com/demo

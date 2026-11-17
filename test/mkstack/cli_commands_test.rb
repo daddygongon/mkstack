@@ -41,15 +41,29 @@ describe Mkstack::CLI do
   end
 
   describe "kick_off" do
-    it "root用templateを作業directoryへ複製する" do
+    it "設定fileとroot用templateを作業directoryへ複製して編集を促す" do
       Dir.mktmpdir do |directory|
-        capture_io { Mkstack::CLI.start(["kick_off", "-C", directory]) }
+        output, = capture_io { Mkstack::CLI.start(["kick_off", "-C", directory]) }
 
-        %w[.style.css .rsync_filter .theme.css].each do |name|
+        %w[.hc_config.yaml .style.css .rsync_filter .theme.css].each do |name|
           actual = File.join(directory, name)
           _(File.exist?(actual)).must_equal true
           _(File.binread(actual)).must_equal File.binread(Mkstack.template_path(name))
         end
+        _(output).must_include "dummy値"
+        _(output).must_include "編集してください"
+      end
+    end
+
+    it "既存の設定fileを上書きしない" do
+      Dir.mktmpdir do |directory|
+        config_path = File.join(directory, ".hc_config.yaml")
+        File.write(config_path, "---\n:lecture: customized\n")
+
+        output, = capture_io { Mkstack::CLI.start(["kick_off", "-C", directory]) }
+
+        _(File.read(config_path)).must_equal "---\n:lecture: customized\n"
+        _(output).must_include "上書きしていません"
       end
     end
   end

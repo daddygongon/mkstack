@@ -94,3 +94,7 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
   完了率，経過時間，残り時間をcolor付きで表示するようにした．
 - colorを使えない環境では =MINITEST_REPORTERS_MONO=1 bundle exec rake test= で
   無色表示に切り替えられる．
+- 設定fileの正本を =.hc_config.yaml= に統一した．=hc_config.yaml~sample= は
+  正本へのsymbolic linkとし，code内に別のdefault値を持たせない．
+- =kick_off= は =.hc_config.yaml= を生成し，dummy値を実環境の値へ編集するよう
+  警告する．既存設定は上書きしない．
