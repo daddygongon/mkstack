@@ -1,8 +1,16 @@
 require 'yaml'
+require 'optparse'
+
+options = { config: '.hc_config.yaml' }
+OptionParser.new do |parser|
+  parser.on('--config PATH', String, '設定ファイル') do |path|
+    options[:config] = path
+  end
+end.parse!
 
 semi_lattice_file = '.semi_lattice/semi_lattice.yaml'
 data = YAML.load_file(semi_lattice_file)
-config = YAML.load_file('.hc_config.yaml')
+config = YAML.load_file(options[:config])
 
 # up には canvas.html を使う．
 canvas_file = 'canvas.html'

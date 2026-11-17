@@ -73,6 +73,21 @@ describe Mkstack::CLI do
         _(output).must_include "上書きしていません"
       end
     end
+
+    it "nested directoryからは設定fileのあるdirectoryを対象にする" do
+      Dir.mktmpdir do |project_root|
+        nested = File.join(project_root, "c1_section", "images")
+        FileUtils.mkdir_p(nested)
+        write_configuration(project_root)
+
+        capture_io { Mkstack::CLI.start(["kick_off", "-C", nested]) }
+
+        %w[.style.css .rsync_filter .theme.css].each do |name|
+          _(File.exist?(File.join(project_root, name))).must_equal true
+          _(File.exist?(File.join(nested, name))).must_equal false
+        end
+      end
+    end
   end
 
   describe "mkdir" do
@@ -96,15 +111,29 @@ describe Mkstack::CLI do
         _(error.message).must_include "すでに存在"
       end
     end
+
+    it "親に設定fileがあっても起動directoryからの相対pathに作る" do
+      Dir.mktmpdir do |project_root|
+        nested = File.join(project_root, "c1_section")
+        FileUtils.mkdir_p(nested)
+        write_configuration(project_root)
+
+        capture_io { Mkstack::CLI.start(["mkdir", "c2_topic", "-C", nested]) }
+
+        _(File.directory?(File.join(nested, "c2_topic"))).must_equal true
+        _(File.exist?(File.join(project_root, "c2_topic"))).must_equal false
+      end
+    end
   end
 
   describe "mk_light_table" do
     it "選択した作業directoryにYAMLとHTMLを生成する" do
-      Dir.mktmpdir do |directory|
-        write_configuration(directory)
-        FileUtils.mkdir_p(File.join(directory, "c1_section"))
+      Dir.mktmpdir do |project_root|
+        directory = File.join(project_root, "c1_section")
+        FileUtils.mkdir_p(File.join(directory, "c2_topic"))
+        write_configuration(project_root)
         File.write(
-          File.join(directory, "c1_section", "readme.html"),
+          File.join(directory, "c2_topic", "readme.html"),
           "<html><head><title>Demo</title></head><body></body></html>"
         )
 
@@ -112,8 +141,9 @@ describe Mkstack::CLI do
 
         %w[light_table.yaml demo.html .style.css dummy_icon.png].each do |name|
           _(File.exist?(File.join(directory, name))).must_equal true
+          _(File.exist?(File.join(project_root, name))).must_equal false
         end
-        _(File.read(File.join(directory, "light_table.yaml"))).must_include "c1_section/readme.html"
+        _(File.read(File.join(directory, "light_table.yaml"))).must_include "c2_topic/readme.html"
       end
     end
 
@@ -128,24 +158,36 @@ describe Mkstack::CLI do
 
         capture_io { cli.mk_light_table }
 
-        _(calls).must_equal [["auto_mk_light_table.rb", "-L", 4]]
+        _(calls).must_equal [
+          ["auto_mk_light_table.rb", "--config", File.join(directory, ".hc_config.yaml"), "-L", 4]
+        ]
         _(File.exist?(File.join(directory, ".style.css"))).must_equal true
       end
     end
   end
 
   describe "mk_link" do
-    it "link更新scriptを呼び出す" do
-      calls = []
-      runner = Object.new
-      runner.define_singleton_method(:run) { |*arguments| calls << arguments }
-      cli = build_cli
-      cli.instance_variable_set(:@runner, runner)
-      cli.define_singleton_method(:ensure_configuration!) { true }
+    it "起動directoryで，親にある設定fileを使ってlink更新scriptを呼び出す" do
+      Dir.mktmpdir do |project_root|
+        nested = File.join(project_root, "c1_section")
+        FileUtils.mkdir_p(nested)
+        write_configuration(project_root)
+        calls = []
+        captured = nil
+        runner = Object.new
+        runner.define_singleton_method(:run) { |*arguments| calls << arguments }
+        factory = lambda do |**arguments|
+          captured = arguments
+          runner
+        end
 
-      cli.mk_link
+        Mkstack::ScriptRunner.stub(:new, factory) do
+          build_cli(directory: nested).mk_link
+        end
 
-      _(calls).must_equal [["mk_link.rb"]]
+        _(captured[:root]).must_equal nested
+        _(calls).must_equal [["mk_link.rb", "--config", File.join(project_root, ".hc_config.yaml")]]
+      end
     end
   end
 
@@ -195,6 +237,22 @@ describe Mkstack::CLI do
         cli.public_send(stage)
 
         _(calls).must_equal [stage]
+      end
+    end
+
+    it "親に設定fileがあっても起動directoryを処理対象にする" do
+      Dir.mktmpdir do |project_root|
+        nested = File.join(project_root, "c1_section")
+        FileUtils.mkdir_p(nested)
+        write_configuration(project_root)
+        File.write(File.join(nested, "topic.html"), "<title>Nested Topic</title>")
+
+        capture_io { Mkstack::CanvasCLI.start(["graph", "-C", nested, "-L", "3"]) }
+
+        graph = File.join(nested, ".semi_lattice", "dir_node_edge.yaml")
+        _(File.file?(graph)).must_equal true
+        _(File.exist?(File.join(project_root, ".semi_lattice", "dir_node_edge.yaml"))).must_equal false
+        _(File.read(graph)).must_include "topic.html"
       end
     end
 
@@ -319,6 +377,29 @@ describe Mkstack::CLI do
   end
 
   describe "push" do
+    it "nested directoryから親projectの設定とrootを使う" do
+      Dir.mktmpdir do |project_root|
+        nested = File.join(project_root, "c1_section", "images")
+        FileUtils.mkdir_p(nested)
+        write_configuration(project_root)
+        captured = nil
+        synchronizer = Object.new
+        synchronizer.define_singleton_method(:server) { "https://example.test/demo/canvas.html" }
+        factory = lambda do |**arguments|
+          captured = arguments
+          synchronizer
+        end
+
+        Mkstack::Sync.stub(:new, factory) do
+          build_cli(directory: nested, dry_run: true).push
+        end
+
+        _(captured[:root]).must_equal project_root
+        _(captured[:config][:lecture]).must_equal "demo"
+        _(captured[:dry_run]).must_equal true
+      end
+    end
+
     it "server同期後に公開URLを開く" do
       events = []
       synchronizer = Object.new

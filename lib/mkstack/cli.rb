@@ -37,7 +37,7 @@ module Mkstack
     class_option :directory,
                  aliases: "-C",
                  type: :string,
-                 desc: "処理対象プロジェクトを探し始めるディレクトリ"
+                 desc: "処理対象ディレクトリ（default: current directory）"
     class_option :level,
                  aliases: "-L",
                  type: :numeric,
@@ -113,11 +113,7 @@ module Mkstack
       end
 
       def builder(open: false)
-        CanvasBuilder.new(root: root, max_level: options[:level].to_i, open: open)
-      end
-
-      def root
-        @root ||= Configuration.find_root(start_directory) || start_directory
+        CanvasBuilder.new(root: start_directory, max_level: options[:level].to_i, open: open)
       end
 
       def start_directory
@@ -143,12 +139,12 @@ module Mkstack
     class_option :directory,
                  aliases: "-C",
                  type: :string,
-                 desc: "project rootの探索開始directory（default: current directory）"
+                 desc: "処理対象ディレクトリ（default: current directory）"
 
     desc "kick_off", "設定fileとstack directoryの初期style fileを配置する"
     def kick_off
       config_created = configuration.install
-      copy_templates(%w[.style.css .rsync_filter .theme.css], root)
+      copy_templates(%w[.style.css .rsync_filter .theme.css], configuration_root)
       say "Kick off hyper card setups"
       File.readlines(Mkstack.template_path("readme.org")).last(3).each { |line| say line.chomp }
       say
@@ -161,7 +157,7 @@ module Mkstack
 
     desc "mkdir [DIR]", "新しいsubdirectoryと基本templateを作る"
     def mkdir(directory_name = "new_sub_dir")
-      target = File.expand_path(directory_name, root)
+      target = File.expand_path(directory_name, working_directory)
       raise Error, "directoryがすでに存在します: #{target}" if File.exist?(target)
 
       FileUtils.mkdir_p(target)
@@ -177,15 +173,15 @@ module Mkstack
     def mk_light_table
       ensure_configuration!
       arguments = options[:level] ? ["-L", options[:level].to_i] : []
-      runner.run("auto_mk_light_table.rb", *arguments)
-      copy_templates(%w[.style.css dummy_icon.png], root)
+      runner.run("auto_mk_light_table.rb", "--config", configuration.path, *arguments)
+      copy_templates(%w[.style.css dummy_icon.png], working_directory)
       runner.run("generate_html.rb") if options[:generate_html]
     end
 
     desc "mk_link", "light_tableの順序からOrgのprev/up/next linkを更新する"
     def mk_link
       ensure_configuration!
-      runner.run("mk_link.rb")
+      runner.run("mk_link.rb", "--config", configuration.path)
     end
 
     desc "mk_canvas SUBCOMMAND ...ARGS", "Orgからcanvas.htmlを段階的に生成する"
@@ -210,16 +206,16 @@ module Mkstack
     end
 
     no_commands do
-      def root
-        @root ||= Configuration.find_root(start_directory) || start_directory
+      def working_directory
+        @working_directory ||= File.expand_path(options[:directory] || Dir.pwd)
       end
 
-      def start_directory
-        @start_directory ||= File.expand_path(options[:directory] || Dir.pwd)
+      def configuration_root
+        @configuration_root ||= Configuration.find_root(working_directory) || working_directory
       end
 
       def configuration
-        @configuration ||= Configuration.new(root)
+        @configuration ||= Configuration.new(configuration_root)
       end
 
       def ensure_configuration!
@@ -227,12 +223,12 @@ module Mkstack
       end
 
       def runner
-        @runner ||= ScriptRunner.new(root: root)
+        @runner ||= ScriptRunner.new(root: working_directory)
       end
 
       def sync(marker)
         validate_dry_run_marker!(marker)
-        Sync.new(root: root, config: configuration.load, dry_run: dry_run?(marker))
+        Sync.new(root: configuration_root, config: configuration.load, dry_run: dry_run?(marker))
       end
 
       def dry_run?(marker)
@@ -256,7 +252,7 @@ module Mkstack
 
       def run_external(*command)
         say command.join(" ")
-        return if system(*command, chdir: root)
+        return if system(*command, chdir: configuration_root)
 
         raise Error, "commandの実行に失敗しました: #{command.join(" ")}"
       end

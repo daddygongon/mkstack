@@ -27,9 +27,12 @@ def section_title(directory)
     File.basename(directory).sub(/\Ac\d+_?/, '').tr('_-', ' ').strip
 end
 
-options = {}
+options = { config: ".hc_config.yaml" }
 OptionParser.new do |parser|
-    parser.banner = "Usage: ruby #{File.basename($PROGRAM_NAME)} [-L LEVEL]"
+    parser.banner = "Usage: ruby #{File.basename($PROGRAM_NAME)} [--config PATH] [-L LEVEL]"
+    parser.on('--config PATH', String, '設定ファイル') do |path|
+        options[:config] = path
+    end
     parser.on('-L LEVEL', Integer, '探索する最大階層（tree -L と同じ数え方）') do |level|
         raise OptionParser::InvalidArgument, 'LEVEL は1以上で指定してください' if level < 1
 
@@ -38,9 +41,9 @@ OptionParser.new do |parser|
 end.parse!
 
 begin
-    config = YAML.load_file(".hc_config.yaml")
+    config = YAML.load_file(options[:config])
 rescue Errno::ENOENT
-    abort "Error: .hc_config.yaml を開けませんでした。"
+    abort "Error: #{options[:config]} を開けませんでした．"
 end
 
 data = [

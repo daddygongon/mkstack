@@ -79,9 +79,15 @@ build全体を中断します．Enterだけならdefaultの`y`になります．
 file名，公開先path，server URLへ編集してください．既存の`.hc_config.yaml`は
 上書きしません．
 
-通常のsubcommandは，現在directoryから親へ遡って最も近い`.hc_config.yaml`を探し，
-その所在directoryをproject rootとして実行します．設定fileが見つからない場合，
-自動生成は行わず，`kick_off`を案内して終了します．
+`mk_canvas`，`mkdir`，`mk_light_table`，`mk_link`は，起動したdirectoryを基準に
+相対pathを解決します．`-C PATH`を指定した場合は，そのdirectoryが基準です．
+`mk_light_table`と`mk_link`は親directoryの`.hc_config.yaml`を設定として読みますが，
+生成・編集対象は起動directoryのままです．
+
+`kick_off`，`rsync_public`，`push`は，現在directoryから親へ遡って最も近い
+`.hc_config.yaml`を探し，その所在directoryを対象に実行します．設定fileがない状態の
+`kick_off`だけは，起動directoryへ新しい`.hc_config.yaml`を作成します．
+`rsync_public`と`push`は設定fileが見つからない場合，自動生成せず終了します．
 
 ## Development
 

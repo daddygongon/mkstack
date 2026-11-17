@@ -173,3 +173,16 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
   「HTMLファイル群からノード・エッジ定義を生成する」と説明する．
 - =layout= は表示座標の付与，=render= は配置済みデータからのHTML生成，=view= は
   生成結果の表示として説明し，Emacs，内部button更新，内部YAML名はhelpから外した．
+
+** 2026-11-17 commandごとの基準directory分離
+
+- =mk_canvas=，=mkdir=，=mk_light_table=，=mk_link= は，起動directoryまたは
+  =-C PATH= を処理基準とし，親の =.hc_config.yaml= 所在directoryへ移動しない．
+- =mk_light_table= と =mk_link= は，生成・編集対象を起動directoryに保ったまま，
+  親で見つけた =.hc_config.yaml= の絶対pathをscriptへ渡して設定だけを共有する．
+- =kick_off=，=rsync_public=，=push= は，親を探索して最も近い =.hc_config.yaml= の
+  所在directoryを処理基準とする．設定がまだない =kick_off= は起動directoryを使う．
+- CLI内部のdirectoryを =working_directory= と =configuration_root= に分離した．
+- Minitestで，nested directoryからの =mk_canvas= graph生成，=mkdir=，
+  =mk_light_table=，=mk_link= がnested directoryを対象とすること，=kick_off= と
+  =rsync_public= が設定directoryを対象とすることを検証する．
