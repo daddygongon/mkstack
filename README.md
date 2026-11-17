@@ -33,9 +33,20 @@ bundle exec exe/mkstack help
 bundle exec exe/mkstack kick_off
 bundle exec exe/mkstack mkdir c1_new_section
 bundle exec exe/mkstack mk_light_table -L 3
+bundle exec exe/mkstack mk_canvas -L 2
+bundle exec exe/mkstack mk_canvas -L 2 --open
 bundle exec exe/mkstack rsync_public --dry-run
 bundle exec exe/mkstack push dry_run
 ```
+
+`mk_canvas`は，対象階層のOrg fileについて次を順に行います．
+
+1. `prev`／`up`／`next` buttonを更新し，EmacsでHTMLへexportする
+2. Org／HTMLのdirectory階層から`.semi_lattice/dir_node_edge.yaml`を生成する
+3. `hc view -n`でnodeを配置し，`.semi_lattice/semi_lattice.yaml`を生成する
+4. `semi_lattice.yaml`から`canvas.html`を生成する
+
+`--open`を付けた場合だけ，完成後に`hc view`で表示します．
 
 `mkstack -T`でもsubcommand一覧を表示できます．別の作業directoryを対象にする場合は，
 共通option `-C PATH`を指定します．

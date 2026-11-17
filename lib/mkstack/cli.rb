@@ -3,6 +3,7 @@
 require "fileutils"
 require "thor"
 
+require_relative "canvas_builder"
 require_relative "configuration"
 require_relative "script_runner"
 require_relative "sync"
@@ -73,16 +74,15 @@ module Mkstack
       runner.run("mk_link.rb")
     end
 
-    desc "mk_canvas", "light_table.yamlからcanvas.htmlを生成する"
-    method_option :level, aliases: "-L", type: :numeric, default: 3, desc: "探索する最大階層"
-    method_option :view, type: :boolean, default: true, desc: "hc viewを実行する"
+    desc "mk_canvas", "Org更新，graph配置，renderを順に行いcanvas.htmlを生成する"
+    method_option :level, aliases: "-L", type: :numeric, default: 2, desc: "探索する最大階層"
+    method_option :open, aliases: "--view", type: :boolean, default: false, desc: "完成後にhc viewで開く"
     def mk_canvas
-      ensure_configuration!
-      runner.run("auto_mk_light_table.rb", "-L", options[:level].to_i)
-      runner.run("mk_dir_node.rb")
-      run_external("hc", "view", "-n", ".semi_lattice/dir_node_edge.yaml") if options[:view]
-      runner.run("mk_canvas.rb")
-      run_external("hc", "view") if options[:view]
+      CanvasBuilder.new(
+        root: root,
+        max_level: options[:level].to_i,
+        open: options[:open]
+      ).call
     end
 
     desc "rsync_public [dry_run]", "公開用repositoryへ同期する"

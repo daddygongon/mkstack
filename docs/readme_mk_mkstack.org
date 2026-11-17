@@ -1,10 +1,21 @@
-#+TITLE: mkstack開発作業記録
+#+OPTIONS: ^:{}
+#+STARTUP: indent nolineimages overview num
+#+TITLE: mk_stack_dir
 #+AUTHOR: Shigeto R. Nishitani
-#+LANGUAGE: jp
-#+OPTIONS: ^:{} H:4 toc:t num:2
-#+STARTUP: indent overview
+#+EMAIL:     (concat "shigeto_nishitani@mac.com")
+#+LANGUAGE:  jp
+#+OPTIONS:   H:4 toc:t num:2
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/org/setup/html-theme-readtheorg.setup
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href=".style_w_link_button.css" />
+#+MACRO: dummy_link @@html:<a href="#">$1</a>@@
 
-* この文書の目的
+# for style.css, never move from here
+[[../c3_linear_algebra_core/readme.html][prev_button]]
+[[../intro_info_26s.html][up_button]]
+[[../c1_outline/readme.html][next_button]]
+# for a real link rewrite usual [[\url][]]
+
+* この文書の目的 <2026-11-17 Tue 16:08>
 
 この文書には，独立gem =mkstack= の設計判断，移植手順，実施結果を時系列で記録する．
 利用者向けの簡潔な説明はルートの =README.md= に置き，ここには開発過程を残す．
@@ -101,3 +112,17 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
 - 通常commandは現在directoryから親へ遡り，最も近い =.hc_config.yaml= の
   所在directoryをproject rootとして使う．設定が見つからない場合は自動生成せず，
   =kick_off= を案内する．
+
+** 2026-11-17 mk_canvas pipelineの完全移植
+
+- archiveの =bin/templates/mk_canvas.rake= を基準に，処理を
+  =lib/mkstack/canvas_builder.rb= へ移植した．
+- =refresh_html= では探索深度以内のOrg fileを列挙し，button linkを更新して
+  Emacs batch exportを実行する．=#+EXPORT_FILE_NAME= と =#+TITLE= も解釈する．
+- =prepare= ではdirectory階層，代表 =readme.org=，HTML title，Org内画像を使って
+  =.semi_lattice/dir_node_edge.yaml= を生成する．
+- =layout= では =hc view -n= による配置と =semi_lattice.yaml= の生成を検証する．
+- =render= では =mk_canvas.rb= を呼び，=canvas.html= の生成を検証する．
+- =--open= 指定時だけ完成後に =hc view= を実行する．探索深度のdefaultは2とした．
+- Minitestでは4段階の呼出順，階層graph，button相対link，title，icon，深度制限，
+  error条件を検証する．

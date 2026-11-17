@@ -143,42 +143,19 @@ describe Mkstack::CLI do
   end
 
   describe "mk_canvas" do
-    it "scriptとhc viewをRake taskと同じ順序で実行する" do
-      events = []
-      runner = Object.new
-      runner.define_singleton_method(:run) { |*arguments| events << [:script, *arguments] }
-      cli = build_cli(level: 4, view: true)
-      cli.instance_variable_set(:@runner, runner)
-      cli.define_singleton_method(:ensure_configuration!) { true }
-      cli.define_singleton_method(:run_external) { |*command| events << [:external, *command] }
+    it "levelとopen optionをCanvasBuilderへ渡す" do
+      received = nil
+      builder = Object.new
+      builder.define_singleton_method(:call) { true }
+      factory = lambda do |**arguments|
+        received = arguments
+        builder
+      end
+      cli = build_cli(directory: "/tmp/demo", level: 4, open: true)
 
-      cli.mk_canvas
+      Mkstack::CanvasBuilder.stub(:new, factory) { cli.mk_canvas }
 
-      _(events).must_equal [
-        [:script, "auto_mk_light_table.rb", "-L", 4],
-        [:script, "mk_dir_node.rb"],
-        [:external, "hc", "view", "-n", ".semi_lattice/dir_node_edge.yaml"],
-        [:script, "mk_canvas.rb"],
-        [:external, "hc", "view"]
-      ]
-    end
-
-    it "--no-viewではhcを起動しない" do
-      events = []
-      runner = Object.new
-      runner.define_singleton_method(:run) { |*arguments| events << arguments }
-      cli = build_cli(level: 3, view: false)
-      cli.instance_variable_set(:@runner, runner)
-      cli.define_singleton_method(:ensure_configuration!) { true }
-      cli.define_singleton_method(:run_external) { |*command| flunk("unexpected: #{command.join(" ")}") }
-
-      cli.mk_canvas
-
-      _(events).must_equal [
-        ["auto_mk_light_table.rb", "-L", 3],
-        ["mk_dir_node.rb"],
-        ["mk_canvas.rb"]
-      ]
+      _(received).must_equal(root: "/tmp/demo", max_level: 4, open: true)
     end
   end
 
