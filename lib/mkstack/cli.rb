@@ -20,10 +20,75 @@ module Mkstack
     File.join(SCRIPTS_DIR, name)
   end
 
+  class CanvasCLI < Thor
+    package_name "mkstack mk_canvas"
+    default_task :all
+    remove_command :tree
+    map "-h" => :help
+    map "--help" => :help
+
+    class_option :directory,
+                 aliases: "-C",
+                 type: :string,
+                 desc: "project rootの探索開始directory（default: current directory）"
+    class_option :level,
+                 aliases: "-L",
+                 type: :numeric,
+                 default: 2,
+                 desc: "探索する最大階層"
+
+    desc "refresh_html", "Org buttonsを更新し，EmacsでHTMLを生成する"
+    def refresh_html
+      builder.run_through(:refresh_html)
+    end
+
+    desc "prepare", "refresh_html後，Canvas配置用graphを生成する"
+    def prepare
+      builder.run_through(:prepare)
+    end
+
+    desc "layout", "prepare後，hc viewでnodeを配置する"
+    def layout
+      builder.run_through(:layout)
+    end
+
+    desc "render", "layout後，canvas.htmlを生成する"
+    def render
+      builder.run_through(:render)
+    end
+
+    desc "all", "全段階を実行する（default）"
+    method_option :open, aliases: "--view", type: :boolean, default: false, desc: "完成後にhc viewで開く"
+    def all
+      builder(open: options[:open]).call
+    end
+
+    def self.exit_on_failure?
+      true
+    end
+
+    no_commands do
+      def builder(open: false)
+        CanvasBuilder.new(root: root, max_level: options[:level].to_i, open: open)
+      end
+
+      def root
+        @root ||= Configuration.find_root(start_directory) || start_directory
+      end
+
+      def start_directory
+        @start_directory ||= File.expand_path(options[:directory] || Dir.pwd)
+      end
+    end
+  end
+
   class CLI < Thor
     package_name "mkstack"
     default_task :help
+    remove_command :tree
     map "-T" => :help
+    map "-h" => :help
+    map "--help" => :help
     map "--tasks" => :help
 
     class_option :directory,
@@ -74,16 +139,8 @@ module Mkstack
       runner.run("mk_link.rb")
     end
 
-    desc "mk_canvas", "Org更新，graph配置，renderを順に行いcanvas.htmlを生成する"
-    method_option :level, aliases: "-L", type: :numeric, default: 2, desc: "探索する最大階層"
-    method_option :open, aliases: "--view", type: :boolean, default: false, desc: "完成後にhc viewで開く"
-    def mk_canvas
-      CanvasBuilder.new(
-        root: root,
-        max_level: options[:level].to_i,
-        open: options[:open]
-      ).call
-    end
+    desc "mk_canvas SUBCOMMAND ...ARGS", "Orgからcanvas.htmlを段階的に生成する"
+    subcommand "mk_canvas", CanvasCLI
 
     desc "rsync_public [dry_run]", "公開用repositoryへ同期する"
     method_option :dry_run, aliases: "-n", type: :boolean, default: false

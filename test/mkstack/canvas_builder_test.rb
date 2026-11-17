@@ -122,6 +122,14 @@ describe Mkstack::CanvasBuilder do
     _(error.message).must_include "1以上"
   end
 
+  it "不明なstageを拒否する" do
+    builder = Mkstack::CanvasBuilder.new(root: Dir.pwd)
+
+    error = _ { builder.run_through(:unknown) }.must_raise Mkstack::Error
+
+    _(error.message).must_include "不明"
+  end
+
   it "Org fileがなければrefresh_htmlを中止する" do
     Dir.mktmpdir do |directory|
       builder = Mkstack::CanvasBuilder.new(root: directory, command_runner: ->(*) { true })

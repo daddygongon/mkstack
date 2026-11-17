@@ -40,6 +40,13 @@ describe Mkstack::CLI do
     end
   end
 
+  it "-hをroot helpのaliasとして扱う" do
+    output, = capture_io { Mkstack::CLI.start(["-h"]) }
+
+    _(output).must_include "mkstack commands"
+    _(output).must_match(/^\s+\S+\s+mk_canvas SUBCOMMAND/m)
+  end
+
   describe "kick_off" do
     it "設定fileとroot用templateを作業directoryへ複製して編集を促す" do
       Dir.mktmpdir do |directory|
@@ -143,19 +150,58 @@ describe Mkstack::CLI do
   end
 
   describe "mk_canvas" do
-    it "levelとopen optionをCanvasBuilderへ渡す" do
-      received = nil
+    it "subcommand省略時はallをdefaultにする" do
+      _(Mkstack::CanvasCLI.default_task).must_equal "all"
+    end
+
+    it "helpと-hでnested subcommand一覧を表示する" do
+      help_output, = capture_io { Mkstack::CanvasCLI.start(["help"]) }
+      short_output, = capture_io { Mkstack::CanvasCLI.start(["-h"]) }
+
+      %w[refresh_html prepare layout render all].each do |command|
+        pattern = /^\s+\S+\s+mk_canvas #{Regexp.escape(command)}(?:\s|$)/
+        _(help_output).must_match pattern
+        _(short_output).must_match pattern
+      end
+    end
+
+    it "help COMMANDとCOMMAND -hで個別helpを表示する" do
+      long_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "help", "render"]) }
+      short_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "render", "-h"]) }
+
+      [long_output, short_output].each do |output|
+        _(output).must_include "mk_canvas render"
+        _(output).must_include "canvas.htmlを生成する"
+      end
+    end
+
+    it "各subcommandを対応するstageまで実行する" do
+      %i[refresh_html prepare layout render].each do |stage|
+        calls = []
+        builder = Object.new
+        builder.define_singleton_method(:run_through) { |target| calls << target }
+        cli = Mkstack::CanvasCLI.new([], { directory: "/tmp/demo", level: 4 }, {})
+        cli.define_singleton_method(:builder) { |open: false| builder }
+
+        cli.public_send(stage)
+
+        _(calls).must_equal [stage]
+      end
+    end
+
+    it "allでlevelとopen optionをCanvasBuilderへ渡す" do
+      received = []
       builder = Object.new
-      builder.define_singleton_method(:call) { true }
+      builder.define_singleton_method(:call) { received << :call }
+      cli = Mkstack::CanvasCLI.new([], { directory: "/tmp/demo", level: 4, open: true }, {})
       factory = lambda do |**arguments|
-        received = arguments
+        received << arguments
         builder
       end
-      cli = build_cli(directory: "/tmp/demo", level: 4, open: true)
 
-      Mkstack::CanvasBuilder.stub(:new, factory) { cli.mk_canvas }
+      Mkstack::CanvasBuilder.stub(:new, factory) { cli.all }
 
-      _(received).must_equal(root: "/tmp/demo", max_level: 4, open: true)
+      _(received).must_equal [{ root: "/tmp/demo", max_level: 4, open: true }, :call]
     end
   end
 

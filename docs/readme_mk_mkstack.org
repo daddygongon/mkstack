@@ -126,3 +126,15 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
 - =--open= 指定時だけ完成後に =hc view= を実行する．探索深度のdefaultは2とした．
 - Minitestでは4段階の呼出順，階層graph，button相対link，title，icon，深度制限，
   error条件を検証する．
+
+** 2026-11-17 mk_canvasのnested subcommand化
+
+- =mkstack mk_canvas refresh_html=，=prepare=，=layout=，=render=，=all= を
+  Thorのnested subcommandとして公開した．
+- 各subcommandはRake taskの依存関係と同様に，指定段階までの前段階を順に実行する．
+  =mk_canvas= だけを指定した場合は =all= をdefaultとして実行する．
+- =mkstack mk_canvas help= と =mkstack mk_canvas -h= で一覧を表示する．
+  =mkstack mk_canvas render -h= のような個別commandのhelpにも対応した．
+- root commandでも =mkstack -h= をhelp aliasとして扱う．
+- Minitestにhelp alias，nested commandから各stageへの委譲，=all= のoption伝達を
+  検証するtestを追加した．

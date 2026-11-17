@@ -33,8 +33,12 @@ bundle exec exe/mkstack help
 bundle exec exe/mkstack kick_off
 bundle exec exe/mkstack mkdir c1_new_section
 bundle exec exe/mkstack mk_light_table -L 3
-bundle exec exe/mkstack mk_canvas -L 2
-bundle exec exe/mkstack mk_canvas -L 2 --open
+bundle exec exe/mkstack mk_canvas help
+bundle exec exe/mkstack mk_canvas refresh_html -L 2
+bundle exec exe/mkstack mk_canvas prepare -L 2
+bundle exec exe/mkstack mk_canvas layout -L 2
+bundle exec exe/mkstack mk_canvas render -L 2
+bundle exec exe/mkstack mk_canvas all -L 2 --open
 bundle exec exe/mkstack rsync_public --dry-run
 bundle exec exe/mkstack push dry_run
 ```
@@ -46,10 +50,15 @@ bundle exec exe/mkstack push dry_run
 3. `hc view -n`でnodeを配置し，`.semi_lattice/semi_lattice.yaml`を生成する
 4. `semi_lattice.yaml`から`canvas.html`を生成する
 
-`--open`を付けた場合だけ，完成後に`hc view`で表示します．
+各subcommandは，指定した段階までに必要な前段階も順に実行します．たとえば
+`render`は1から4までを，`layout`は1から3までを実行します．`all`は`render`と
+同じ4段階を実行し，`--open`を付けた場合だけ完成後に`hc view`で表示します．
+`mk_canvas`だけを指定した場合も，互換性のため`all`として扱います．
 
-`mkstack -T`でもsubcommand一覧を表示できます．別の作業directoryを対象にする場合は，
-共通option `-C PATH`を指定します．
+`mkstack -h`，`mkstack -T`でtop-levelのsubcommand一覧を，
+`mkstack mk_canvas -h`で`mk_canvas`のsubcommand一覧を表示できます．
+`mkstack mk_canvas render -h`のように，個別commandのhelpも表示できます．
+別の作業directoryを対象にする場合は，共通option `-C PATH`を指定します．
 
 `kick_off`は`.hc_config.yaml`をdummy値で生成します．生成後に，実際の講義名，HTML
 file名，公開先path，server URLへ編集してください．既存の`.hc_config.yaml`は

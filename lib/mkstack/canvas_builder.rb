@@ -8,6 +8,7 @@ require "yaml"
 
 module Mkstack
   class CanvasBuilder
+    STAGES = %i[refresh_html prepare layout render].freeze
     INPUT_YAML = Pathname.new(".semi_lattice/dir_node_edge.yaml").freeze
     LAYOUT_YAML = Pathname.new(".semi_lattice/semi_lattice.yaml").freeze
     IMAGE_EXTENSIONS = %w[avif bmp gif heic heif ico jpe jpeg jpg jxl png svg tif tiff webp].freeze
@@ -28,15 +29,29 @@ module Mkstack
     end
 
     def call
+      result = run_through(:render)
+      open_canvas if @open
+      result
+    end
+
+    def run_through(target_stage)
+      target = target_stage.to_sym
+      raise Error, "不明なmk_canvas stageです: #{target_stage}" unless STAGES.include?(target)
+
       @output.puts "[1/4] Org buttonsを更新し，HTMLを生成します．"
       html_by_org = refresh_html
+      return html_by_org if target == :refresh_html
+
       @output.puts "[2/4] Canvas配置用graphを生成します．"
-      prepare(html_by_org)
+      result = prepare(html_by_org)
+      return result if target == :prepare
+
       @output.puts "[3/4] hc viewでnodeを配置します．"
-      layout
+      result = layout
+      return result if target == :layout
+
       @output.puts "[4/4] canvas.htmlを生成します．"
       render
-      open_canvas if @open
     end
 
     def refresh_html
