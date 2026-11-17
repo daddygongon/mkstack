@@ -167,6 +167,8 @@ describe Mkstack::CLI do
       %w[refresh_html prepare all].each do |old_command|
         _(help_output).wont_match(/^\s+\S+\s+mk_canvas #{Regexp.escape(old_command)}(?:\s|$)/)
       end
+      _(help_output).must_match(/^\s+\S+\s+mk_canvas help \[COMMAND\]/m)
+      _(help_output).must_include "利用できるサブコマンドの一覧または詳細を表示する"
     end
 
     it "help COMMANDとCOMMAND -hで個別helpを表示する" do
@@ -176,10 +178,10 @@ describe Mkstack::CLI do
 
       [long_output, short_output].each do |output|
         _(output).must_include "mk_canvas render"
-        _(output).must_include "canvas.htmlを生成する"
+        _(output).must_include "配置済みデータからcanvas.htmlを生成する"
       end
       _(build_output).must_include "--yes"
-      _(build_output).must_include "質問せず全工程を実行する"
+      _(build_output).must_include "確認せず全工程を実行する"
     end
 
     it "各subcommandを対応する独立工程だけ実行する" do

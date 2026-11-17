@@ -59,7 +59,7 @@ bundle exec exe/mkstack push dry_run
 `build`では各工程の前に次のように確認します．
 
 ```text
-export: Org buttonsを更新し，HTMLを生成しますか？ y(es)/n(o)/a(bort): (y)
+export: Org文書からHTMLファイルを生成しますか？ y(es)/n(o)/a(bort): (y)
 ```
 
 `y`または`yes`で実行，`n`または`no`でその工程だけをskip，`a`または`abort`で

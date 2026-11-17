@@ -22,10 +22,10 @@ module Mkstack
 
   class CanvasCLI < Thor
     BUILD_STEPS = [
-      [:export, "Org buttonsを更新し，HTMLを生成"],
-      [:graph, "既存HTMLからdir_node_edge.yamlを生成"],
-      [:layout, "dir_node_edge.yamlからsemi_lattice.yamlを生成"],
-      [:render, "semi_lattice.yamlからcanvas.htmlを生成"]
+      [:export, "Org文書からHTMLファイルを生成"],
+      [:graph, "HTMLファイル群からノード・エッジ定義を生成"],
+      [:layout, "ノード・エッジ定義に表示座標を付与"],
+      [:render, "配置済みデータからcanvas.htmlを生成"]
     ].freeze
 
     package_name "mkstack mk_canvas"
@@ -37,41 +37,41 @@ module Mkstack
     class_option :directory,
                  aliases: "-C",
                  type: :string,
-                 desc: "project rootの探索開始directory（default: current directory）"
+                 desc: "処理対象プロジェクトを探し始めるディレクトリ"
     class_option :level,
                  aliases: "-L",
                  type: :numeric,
                  default: 2,
-                 desc: "探索する最大階層"
+                 desc: "対象ファイルを探索する最大階層"
 
-    desc "export", "Org buttonsを更新し，EmacsでHTMLを生成する"
+    desc "export", "Org文書からHTMLファイルを生成する"
     def export
       builder.export
     end
 
-    desc "graph", "既存のHTMLからdir_node_edge.yamlを生成する"
+    desc "graph", "HTMLファイル群からノード・エッジ定義を生成する"
     def graph
       builder.graph
     end
 
-    desc "layout", "dir_node_edge.yamlからsemi_lattice.yamlを生成する"
+    desc "layout", "ノード・エッジ定義に表示座標を付与する"
     def layout
       builder.layout
     end
 
-    desc "render", "semi_lattice.yamlからcanvas.htmlを生成する"
+    desc "render", "配置済みデータからcanvas.htmlを生成する"
     def render
       builder.render
     end
 
-    desc "view", "生成済みcanvasをhc viewで表示する"
+    desc "view", "生成したcanvasを表示する"
     def view
       builder.view
     end
 
-    desc "build", "exportからrenderまで全段階を実行する（default）"
-    method_option :open, aliases: "--view", type: :boolean, default: false, desc: "完成後にhc viewで開く"
-    method_option :yes, aliases: "-y", type: :boolean, default: false, desc: "質問せず全工程を実行する"
+    desc "build", "canvas.htmlを対話形式で段階的に生成する（default）"
+    method_option :open, aliases: "--view", type: :boolean, default: false, desc: "生成後にcanvasを表示する"
+    method_option :yes, aliases: "-y", type: :boolean, default: false, desc: "確認せず全工程を実行する"
     def build
       canvas_builder = builder
       BUILD_STEPS.each do |stage, description|
@@ -134,6 +134,11 @@ module Mkstack
     map "-h" => :help
     map "--help" => :help
     map "--tasks" => :help
+
+    desc "help [COMMAND]", "利用できるコマンドの一覧または詳細を表示する"
+    def help(command = nil, subcommand = false)
+      super
+    end
 
     class_option :directory,
                  aliases: "-C",
@@ -257,4 +262,6 @@ module Mkstack
       end
     end
   end
+
+  CanvasCLI.commands.fetch("help").description = "利用できるサブコマンドの一覧または詳細を表示する"
 end

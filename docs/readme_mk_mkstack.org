@@ -165,3 +165,11 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
 - =--open= 指定時は全工程の選択終了後に =view= を実行する．
 - Minitestで実行／skipの混在，中断，=--yes= による質問省略と =view= 実行，
   helpへのoption表示を検証する．
+
+** 2026-11-17 mk_canvas helpの表現整理
+
+- helpと対話promptは，内部実装ではなく，各工程の入力と結果が分かる説明へ変更した．
+- =export= は「Org文書からHTMLファイルを生成する」，=graph= は
+  「HTMLファイル群からノード・エッジ定義を生成する」と説明する．
+- =layout= は表示座標の付与，=render= は配置済みデータからのHTML生成，=view= は
+  生成結果の表示として説明し，Emacs，内部button更新，内部YAML名はhelpから外した．
