@@ -8,7 +8,6 @@ require "yaml"
 
 module Mkstack
   class CanvasBuilder
-    STAGES = %i[refresh_html prepare layout render].freeze
     INPUT_YAML = Pathname.new(".semi_lattice/dir_node_edge.yaml").freeze
     LAYOUT_YAML = Pathname.new(".semi_lattice/semi_lattice.yaml").freeze
     IMAGE_EXTENSIONS = %w[avif bmp gif heic heif ico jpe jpeg jpg jxl png svg tif tiff webp].freeze
@@ -29,32 +28,26 @@ module Mkstack
     end
 
     def call
-      result = run_through(:render)
-      open_canvas if @open
+      result = build
+      view if @open
       result
     end
 
-    def run_through(target_stage)
-      target = target_stage.to_sym
-      raise Error, "不明なmk_canvas stageです: #{target_stage}" unless STAGES.include?(target)
-
+    def build
       @output.puts "[1/4] Org buttonsを更新し，HTMLを生成します．"
-      html_by_org = refresh_html
-      return html_by_org if target == :refresh_html
+      export
 
       @output.puts "[2/4] Canvas配置用graphを生成します．"
-      result = prepare(html_by_org)
-      return result if target == :prepare
+      graph
 
       @output.puts "[3/4] hc viewでnodeを配置します．"
-      result = layout
-      return result if target == :layout
+      layout
 
       @output.puts "[4/4] canvas.htmlを生成します．"
       render
     end
 
-    def refresh_html
+    def export
       orgs = org_files
       raise Error, "対象となるOrg fileが見つかりませんでした．" if orgs.empty?
 
@@ -78,11 +71,13 @@ module Mkstack
       html_by_org
     end
 
-    def prepare(html_by_org = nil)
-      html_by_org ||= org_files.to_h { |org| [org, org_export_path(org)] }
+    def graph
+      html_by_org = org_files.to_h { |org| [org, org_export_path(org)] }
       org_by_html = html_by_org.invert
-      files = html_by_org.values.sort
-      raise Error, "Canvas対象のHTMLがありません．" if files.empty?
+      files = html_files
+      if files.empty?
+        raise Error, "Canvas対象のHTMLがありません．先に `mkstack mk_canvas export` を実行してください．"
+      end
 
       FileUtils.mkdir_p(absolute(INPUT_YAML.dirname))
       File.write(absolute(INPUT_YAML), YAML.dump(build_graph(files, org_by_html)))
@@ -93,6 +88,10 @@ module Mkstack
     end
 
     def layout
+      unless absolute(INPUT_YAML).file?
+        raise Error, "#{INPUT_YAML} がありません．先に `mkstack mk_canvas graph` を実行してください．"
+      end
+
       run!("hc", "view", "-n", INPUT_YAML.to_s)
       raise Error, "#{LAYOUT_YAML} が生成されませんでした．" unless absolute(LAYOUT_YAML).file?
 
@@ -100,6 +99,10 @@ module Mkstack
     end
 
     def render
+      unless absolute(LAYOUT_YAML).file?
+        raise Error, "#{LAYOUT_YAML} がありません．先に `mkstack mk_canvas layout` を実行してください．"
+      end
+
       generator = Mkstack.script_path("mk_canvas.rb")
       raise Error, "生成scriptが見つかりません: #{generator}" unless File.file?(generator)
 
@@ -108,6 +111,14 @@ module Mkstack
       raise Error, "canvas.htmlが生成されませんでした．" unless canvas.file?
 
       canvas
+    end
+
+    def view
+      unless absolute("canvas.html").file?
+        raise Error, "canvas.htmlがありません．先に `mkstack mk_canvas render` を実行してください．"
+      end
+
+      run!("hc", "view")
     end
 
     private
@@ -124,6 +135,10 @@ module Mkstack
 
     def org_files
       files_at_level("org")
+    end
+
+    def html_files
+      files_at_level("html").reject { |file| file == "canvas.html" }
     end
 
     def org_text(file)
@@ -259,6 +274,7 @@ module Mkstack
       directories_for(files).each do |directory|
         readme_org = directory == "." ? "readme.org" : File.join(directory, "readme.org")
         representative_html = org_by_html.key(readme_org)
+        representative_html = nil unless files.include?(representative_html)
         directory_ids[directory] = next_id
 
         if representative_html
@@ -289,10 +305,6 @@ module Mkstack
       end
 
       { nodes: nodes, edges: edges }
-    end
-
-    def open_canvas
-      run!("hc", "view")
     end
 
     def run!(*command)

@@ -21,8 +21,15 @@ module Mkstack
   end
 
   class CanvasCLI < Thor
+    BUILD_STEPS = [
+      [:export, "Org buttonsを更新し，HTMLを生成"],
+      [:graph, "既存HTMLからdir_node_edge.yamlを生成"],
+      [:layout, "dir_node_edge.yamlからsemi_lattice.yamlを生成"],
+      [:render, "semi_lattice.yamlからcanvas.htmlを生成"]
+    ].freeze
+
     package_name "mkstack mk_canvas"
-    default_task :all
+    default_task :build
     remove_command :tree
     map "-h" => :help
     map "--help" => :help
@@ -37,30 +44,49 @@ module Mkstack
                  default: 2,
                  desc: "探索する最大階層"
 
-    desc "refresh_html", "Org buttonsを更新し，EmacsでHTMLを生成する"
-    def refresh_html
-      builder.run_through(:refresh_html)
+    desc "export", "Org buttonsを更新し，EmacsでHTMLを生成する"
+    def export
+      builder.export
     end
 
-    desc "prepare", "refresh_html後，Canvas配置用graphを生成する"
-    def prepare
-      builder.run_through(:prepare)
+    desc "graph", "既存のHTMLからdir_node_edge.yamlを生成する"
+    def graph
+      builder.graph
     end
 
-    desc "layout", "prepare後，hc viewでnodeを配置する"
+    desc "layout", "dir_node_edge.yamlからsemi_lattice.yamlを生成する"
     def layout
-      builder.run_through(:layout)
+      builder.layout
     end
 
-    desc "render", "layout後，canvas.htmlを生成する"
+    desc "render", "semi_lattice.yamlからcanvas.htmlを生成する"
     def render
-      builder.run_through(:render)
+      builder.render
     end
 
-    desc "all", "全段階を実行する（default）"
+    desc "view", "生成済みcanvasをhc viewで表示する"
+    def view
+      builder.view
+    end
+
+    desc "build", "exportからrenderまで全段階を実行する（default）"
     method_option :open, aliases: "--view", type: :boolean, default: false, desc: "完成後にhc viewで開く"
-    def all
-      builder(open: options[:open]).call
+    method_option :yes, aliases: "-y", type: :boolean, default: false, desc: "質問せず全工程を実行する"
+    def build
+      canvas_builder = builder
+      BUILD_STEPS.each do |stage, description|
+        decision = options[:yes] ? :run : ask_build_step(stage, description)
+        case decision
+        when :run
+          canvas_builder.public_send(stage)
+        when :skip
+          say "#{stage}をスキップしました．", :yellow
+        when :abort
+          say "buildを中断しました．", :yellow
+          return
+        end
+      end
+      canvas_builder.view if options[:open]
     end
 
     def self.exit_on_failure?
@@ -68,6 +94,24 @@ module Mkstack
     end
 
     no_commands do
+      def ask_build_step(stage, description)
+        loop do
+          answer = ask("#{stage}: #{description}しますか？ y(es)/n(o)/a(bort):", default: "y")
+          return :abort if answer.nil?
+
+          case answer.strip.downcase
+          when "y", "yes"
+            return :run
+          when "n", "no"
+            return :skip
+          when "a", "abort"
+            return :abort
+          else
+            say "y(es)，n(o)，a(bort)のいずれかを入力してください．", :red
+          end
+        end
+      end
+
       def builder(open: false)
         CanvasBuilder.new(root: root, max_level: options[:level].to_i, open: open)
       end

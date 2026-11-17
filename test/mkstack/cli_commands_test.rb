@@ -150,36 +150,43 @@ describe Mkstack::CLI do
   end
 
   describe "mk_canvas" do
-    it "subcommand省略時はallをdefaultにする" do
-      _(Mkstack::CanvasCLI.default_task).must_equal "all"
+    it "subcommand省略時はbuildをdefaultにする" do
+      _(Mkstack::CanvasCLI.default_task).must_equal "build"
     end
 
     it "helpと-hでnested subcommand一覧を表示する" do
       help_output, = capture_io { Mkstack::CanvasCLI.start(["help"]) }
       short_output, = capture_io { Mkstack::CanvasCLI.start(["-h"]) }
 
-      %w[refresh_html prepare layout render all].each do |command|
+      %w[export graph layout render view build].each do |command|
         pattern = /^\s+\S+\s+mk_canvas #{Regexp.escape(command)}(?:\s|$)/
         _(help_output).must_match pattern
         _(short_output).must_match pattern
+      end
+
+      %w[refresh_html prepare all].each do |old_command|
+        _(help_output).wont_match(/^\s+\S+\s+mk_canvas #{Regexp.escape(old_command)}(?:\s|$)/)
       end
     end
 
     it "help COMMANDとCOMMAND -hで個別helpを表示する" do
       long_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "help", "render"]) }
       short_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "render", "-h"]) }
+      build_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "help", "build"]) }
 
       [long_output, short_output].each do |output|
         _(output).must_include "mk_canvas render"
         _(output).must_include "canvas.htmlを生成する"
       end
+      _(build_output).must_include "--yes"
+      _(build_output).must_include "質問せず全工程を実行する"
     end
 
-    it "各subcommandを対応するstageまで実行する" do
-      %i[refresh_html prepare layout render].each do |stage|
+    it "各subcommandを対応する独立工程だけ実行する" do
+      %i[export graph layout render view].each do |stage|
         calls = []
         builder = Object.new
-        builder.define_singleton_method(:run_through) { |target| calls << target }
+        builder.define_singleton_method(stage) { calls << stage }
         cli = Mkstack::CanvasCLI.new([], { directory: "/tmp/demo", level: 4 }, {})
         cli.define_singleton_method(:builder) { |open: false| builder }
 
@@ -189,19 +196,63 @@ describe Mkstack::CLI do
       end
     end
 
-    it "allでlevelとopen optionをCanvasBuilderへ渡す" do
+    it "buildで工程ごとに実行とskipを選べる" do
+      events = []
+      answers = %w[y n yes no]
+      builder = Object.new
+      %i[export graph layout render].each do |stage|
+        builder.define_singleton_method(stage) { events << stage }
+      end
+      cli = Mkstack::CanvasCLI.new([], { directory: "/tmp/demo", level: 4 }, {})
+      cli.define_singleton_method(:builder) { |open: false| builder }
+      cli.define_singleton_method(:ask) { |*, **| answers.shift }
+
+      output, = capture_io { cli.build }
+
+      _(events).must_equal %i[export layout]
+      _(output).must_include "graphをスキップ"
+      _(output).must_include "renderをスキップ"
+    end
+
+    it "buildを途中で中断できる" do
+      events = []
+      answers = %w[y abort]
+      builder = Object.new
+      %i[export graph layout render].each do |stage|
+        builder.define_singleton_method(stage) { events << stage }
+      end
+      cli = Mkstack::CanvasCLI.new([], { directory: "/tmp/demo", level: 4 }, {})
+      cli.define_singleton_method(:builder) { |open: false| builder }
+      cli.define_singleton_method(:ask) { |*, **| answers.shift }
+
+      output, = capture_io { cli.build }
+
+      _(events).must_equal [:export]
+      _(output).must_include "buildを中断"
+    end
+
+    it "--yesでは質問せず全工程と指定されたviewを実行する" do
+      events = []
       received = []
       builder = Object.new
-      builder.define_singleton_method(:call) { received << :call }
-      cli = Mkstack::CanvasCLI.new([], { directory: "/tmp/demo", level: 4, open: true }, {})
+      %i[export graph layout render view].each do |stage|
+        builder.define_singleton_method(stage) { events << stage }
+      end
+      cli = Mkstack::CanvasCLI.new(
+        [],
+        { directory: "/tmp/demo", level: 4, open: true, yes: true },
+        {}
+      )
+      cli.define_singleton_method(:ask) { |*| raise "質問してはいけません" }
       factory = lambda do |**arguments|
         received << arguments
         builder
       end
 
-      Mkstack::CanvasBuilder.stub(:new, factory) { cli.all }
+      Mkstack::CanvasBuilder.stub(:new, factory) { cli.build }
 
-      _(received).must_equal [{ root: "/tmp/demo", max_level: 4, open: true }, :call]
+      _(received).must_equal [{ root: "/tmp/demo", max_level: 4, open: false }]
+      _(events).must_equal %i[export graph layout render view]
     end
   end
 

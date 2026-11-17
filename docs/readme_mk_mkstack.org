@@ -138,3 +138,30 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
 - root commandでも =mkstack -h= をhelp aliasとして扱う．
 - Minitestにhelp alias，nested commandから各stageへの委譲，=all= のoption伝達を
   検証するtestを追加した．
+
+** 2026-11-17 mk_canvas工程の独立subcommand化
+
+- 公開subcommandを =export=，=graph=，=layout=，=render=，=view=，=build= に
+  整理した．旧 =refresh_html=，=prepare=，=all= は削除し，aliasも設けない．
+- =export= はOrgからHTML，=graph= は既存HTMLから =dir_node_edge.yaml=，
+  =layout= は =dir_node_edge.yaml= から =semi_lattice.yaml=，=render= は
+  =semi_lattice.yaml= から =canvas.html= を生成する．=view= は生成済みcanvasを
+  =hc view= で表示する．
+- 各工程commandは前工程を自動実行しない．入力が存在しない場合は，先に実行すべき
+  commandをerror messageで案内する．
+- =build= だけが =export → graph → layout → render= を順に実行する．
+  =--open= 指定時は最後に =view= も実行する．subcommand省略時のdefaultも
+  =build= とした．
+- helpには新しい6 commandだけを表示する．Minitestで各commandの独立委譲，
+  既存HTMLだけからのgraph生成，入力不足時の案内を検証する．
+
+** 2026-11-17 buildのinteractive実行
+
+- =bundle gem= の未設定optionに対する質問方法を参考に，=build= の各工程前に
+  対話確認を追加した．
+- =y=/=yes= は実行，=n=/=no= はその工程だけをskip，=a=/=abort= はbuild全体を
+  中断する．Enterだけの場合はdefaultの =y= として実行する．EOFも安全に中断する．
+- automation用に =-y=/=--yes= を追加し，指定時は質問せず全工程を実行する．
+- =--open= 指定時は全工程の選択終了後に =view= を実行する．
+- Minitestで実行／skipの混在，中断，=--yes= による質問省略と =view= 実行，
+  helpへのoption表示を検証する．

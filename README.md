@@ -34,11 +34,13 @@ bundle exec exe/mkstack kick_off
 bundle exec exe/mkstack mkdir c1_new_section
 bundle exec exe/mkstack mk_light_table -L 3
 bundle exec exe/mkstack mk_canvas help
-bundle exec exe/mkstack mk_canvas refresh_html -L 2
-bundle exec exe/mkstack mk_canvas prepare -L 2
+bundle exec exe/mkstack mk_canvas export -L 2
+bundle exec exe/mkstack mk_canvas graph -L 2
 bundle exec exe/mkstack mk_canvas layout -L 2
 bundle exec exe/mkstack mk_canvas render -L 2
-bundle exec exe/mkstack mk_canvas all -L 2 --open
+bundle exec exe/mkstack mk_canvas view
+bundle exec exe/mkstack mk_canvas build -L 2 --open
+bundle exec exe/mkstack mk_canvas build -L 2 --yes
 bundle exec exe/mkstack rsync_public --dry-run
 bundle exec exe/mkstack push dry_run
 ```
@@ -50,14 +52,27 @@ bundle exec exe/mkstack push dry_run
 3. `hc view -n`でnodeを配置し，`.semi_lattice/semi_lattice.yaml`を生成する
 4. `semi_lattice.yaml`から`canvas.html`を生成する
 
-各subcommandは，指定した段階までに必要な前段階も順に実行します．たとえば
-`render`は1から4までを，`layout`は1から3までを実行します．`all`は`render`と
-同じ4段階を実行し，`--open`を付けた場合だけ完成後に`hc view`で表示します．
-`mk_canvas`だけを指定した場合も，互換性のため`all`として扱います．
+各subcommandは独立しており，前段階を自動実行しません．`export`は1，`graph`は2，
+`layout`は3，`render`は4だけを実行し，`view`は生成済みcanvasを`hc view`で
+表示します．必要な入力がない場合は，先に実行すべきcommandを表示して終了します．
+
+`build`では各工程の前に次のように確認します．
+
+```text
+export: Org buttonsを更新し，HTMLを生成しますか？ y(es)/n(o)/a(bort): (y)
+```
+
+`y`または`yes`で実行，`n`または`no`でその工程だけをskip，`a`または`abort`で
+build全体を中断します．Enterだけならdefaultの`y`になります．CIなどの非対話実行では
+`-y`／`--yes`を指定すると，質問せず1から4までを実行します．`--open`を付けた場合は，
+完了後に`view`も実行します．
+
+`mk_canvas`だけを指定した場合は`build`として扱います．旧command名の
+`refresh_html`，`prepare`，`all`は提供していません．
 
 `mkstack -h`，`mkstack -T`でtop-levelのsubcommand一覧を，
 `mkstack mk_canvas -h`で`mk_canvas`のsubcommand一覧を表示できます．
-`mkstack mk_canvas render -h`のように，個別commandのhelpも表示できます．
+`mkstack mk_canvas graph -h`のように，個別commandのhelpも表示できます．
 別の作業directoryを対象にする場合は，共通option `-C PATH`を指定します．
 
 `kick_off`は`.hc_config.yaml`をdummy値で生成します．生成後に，実際の講義名，HTML

@@ -21,7 +21,7 @@ describe Mkstack::CanvasBuilder do
     ORG
   end
 
-  it "refresh_html，prepare，layout，render，openを順に再現する" do
+  it "export，graph，layout，render，viewを順に再現する" do
     Dir.mktmpdir do |directory|
       FileUtils.mkdir_p(File.join(directory, "c1_section", "deep"))
       FileUtils.mkdir_p(File.join(directory, ".semi_lattice", "icons"))
@@ -122,21 +122,51 @@ describe Mkstack::CanvasBuilder do
     _(error.message).must_include "1以上"
   end
 
-  it "不明なstageを拒否する" do
-    builder = Mkstack::CanvasBuilder.new(root: Dir.pwd)
-
-    error = _ { builder.run_through(:unknown) }.must_raise Mkstack::Error
-
-    _(error.message).must_include "不明"
-  end
-
-  it "Org fileがなければrefresh_htmlを中止する" do
+  it "Org fileがなければexportを中止する" do
     Dir.mktmpdir do |directory|
       builder = Mkstack::CanvasBuilder.new(root: directory, command_runner: ->(*) { true })
 
-      error = _ { builder.refresh_html }.must_raise Mkstack::Error
+      error = _ { builder.export }.must_raise Mkstack::Error
 
       _(error.message).must_include "Org file"
+    end
+  end
+
+  it "graphはexportを実行せず既存HTMLから生成する" do
+    Dir.mktmpdir do |directory|
+      FileUtils.mkdir_p(File.join(directory, "c1_section"))
+      File.write(File.join(directory, "readme.org"), org_source(title: "Not exported"))
+      File.write(File.join(directory, "c1_section", "topic.html"), "<title>Topic</title>")
+      calls = []
+      builder = Mkstack::CanvasBuilder.new(
+        root: directory,
+        output: StringIO.new,
+        command_runner: ->(command, _root) { calls << command }
+      )
+
+      result = builder.graph
+
+      _(result).must_equal Mkstack::CanvasBuilder::INPUT_YAML
+      _(calls).must_be_empty
+      graph = YAML.load_file(File.join(directory, ".semi_lattice", "dir_node_edge.yaml"))
+      _(graph[:nodes].map { |node| node[:file_path] }).must_include "c1_section/topic.html"
+      _(graph[:nodes].map { |node| node[:file_path] }).wont_include "readme.html"
+    end
+  end
+
+  it "各独立工程で入力がなければ直前のcommandを案内する" do
+    Dir.mktmpdir do |directory|
+      builder = Mkstack::CanvasBuilder.new(root: directory, command_runner: ->(*) { true })
+
+      graph_error = _ { builder.graph }.must_raise Mkstack::Error
+      layout_error = _ { builder.layout }.must_raise Mkstack::Error
+      render_error = _ { builder.render }.must_raise Mkstack::Error
+      view_error = _ { builder.view }.must_raise Mkstack::Error
+
+      _(graph_error.message).must_include "mk_canvas export"
+      _(layout_error.message).must_include "mk_canvas graph"
+      _(render_error.message).must_include "mk_canvas layout"
+      _(view_error.message).must_include "mk_canvas render"
     end
   end
 end
