@@ -93,6 +93,17 @@ file名，公開先path，server URLへ編集してください．既存の`.hc_
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
+testを実行するmachineでは，clone後にdevelopment dependencyを導入してください．
+
+```bash
+bin/setup
+bundle exec rake test
+```
+
+`minitest-reporters`はtest出力専用で，配布gemのruntime dependencyではありません．
+未導入の場合も標準Minitest reporterでtestを継続しますが，rich color表示を使うには
+`bundle install`を実行してください．gemとして利用するだけの場合は導入不要です．
+
 Production code and tests use matching paths. For example,
 `lib/mkstack/version.rb` is tested by `test/mkstack/version_test.rb`.
 

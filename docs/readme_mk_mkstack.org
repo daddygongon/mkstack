@@ -186,3 +186,15 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
 - Minitestで，nested directoryからの =mk_canvas= graph生成，=mkdir=，
   =mk_light_table=，=mk_link= がnested directoryを対象とすること，=kick_off= と
   =rsync_public= が設定directoryを対象とすることを検証する．
+
+** 2026-11-18 minitest-reportersのinstall問題を修正
+
+- =mkstack.gemspec= に誤って追加されていた存在しないruntime dependency
+  =minispec-repoters= を削除した．正しい =minitest-reporters= はtest専用なので，
+  =Gemfile= のdevelopment dependencyとして管理する．
+- clone後は =bin/setup= または =bundle install= を実行し，
+  =bundle exec rake test= でtestする手順をREADMEに明記した．
+- =minitest-reporters= が未導入でも =test/test_helper.rb= は標準Minitest reporterへ
+  fallbackする．rich color表示を使う場合は =bundle install= を案内する．
+- lockfileなしのfresh cloneでdependency解決，39 tests，gem build，isolated install，
+  =mkstack -h= の起動を検証した．

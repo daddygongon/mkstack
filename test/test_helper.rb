@@ -9,12 +9,16 @@ unless ENV["MINITEST_REPORTERS_MONO"]
   ENV["TERM"] = "xterm-256color" unless ENV.fetch("TERM", "").downcase.include?("color")
 end
 
-require "minitest/reporters"
+begin
+  require "minitest/reporters"
 
-Minitest::Reporters.use!(
-  Minitest::Reporters::ProgressReporter.new(
-    color: true,
-    verbose: true,
-    format: "  %c/%C [%B] %p%% | %a | %e"
+  Minitest::Reporters.use!(
+    Minitest::Reporters::ProgressReporter.new(
+      color: true,
+      verbose: true,
+      format: "  %c/%C [%B] %p%% | %a | %e"
+    )
   )
-)
+rescue LoadError
+  warn "minitest-reportersがありません．rich color表示には `bundle install` を実行してください．"
+end
