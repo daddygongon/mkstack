@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description = "A standalone CLI for building and managing stack directories, designed for future integration with hc."
   spec.homepage = "https://github.com/daddygongon/mkstack"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.required_ruby_version = ">= 3.0.2"
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"

@@ -198,3 +198,10 @@ lib/mkstack/stack_builder.rb <-> test/mkstack/stack_builder_test.rb
   fallbackする．rich color表示を使う場合は =bundle install= を案内する．
 - lockfileなしのfresh cloneでdependency解決，39 tests，gem build，isolated install，
   =mkstack -h= の起動を検証した．
+
+** 2026-11-18 Ruby 3.0.2対応
+
+- gemspecの =required_ruby_version= を =">= 3.2.0"= から =">= 3.0.2"= へ
+  変更した．
+- MinitestにRuby 3.0.2を受理し，3.0.1を拒否する境界testを追加した．
+- Ruby 3.0.2で全 =lib/**/*.rb= のsyntax，40 tests，CLI help，gem installを検証した．

@@ -8,6 +8,8 @@
 `docs/archive/c0_mk_stack_dir/`に保存しています．開発判断と作業履歴は
 `docs/readme_mk_mkstack.org`を参照してください．
 
+動作にはRuby 3.0.2以上が必要です．
+
 ## Installation
 
 TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
