@@ -168,6 +168,14 @@ module Mkstack
     desc "mkdir [DIR]", "新しいsubdirectoryと基本templateを作る"
     def mkdir(directory_name = "new_sub_dir")
       target = File.expand_path(directory_name, working_directory)
+      if target == working_directory
+        copy_templates(
+          %w[readme.org dummy_icon.png] + css_template_names,
+          target
+        )
+        return
+      end
+
       raise Error, "directoryがすでに存在します: #{target}" if File.exist?(target)
 
       FileUtils.mkdir_p(target)
@@ -258,6 +266,10 @@ module Mkstack
           say "#{source} -> #{target}"
           FileUtils.cp(source, target)
         end
+      end
+
+      def css_template_names
+        Dir.children(Mkstack::TEMPLATES_DIR).grep(/\.css\z/).sort
       end
 
       def run_external(*command)

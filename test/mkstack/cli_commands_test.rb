@@ -110,6 +110,21 @@ describe Mkstack::CLI do
   end
 
   describe "mkdir" do
+    it ".を指定するとreadme，dummy icon，全CSS templateを作業directoryへ複製する" do
+      Dir.mktmpdir do |directory|
+        capture_io { Mkstack::CLI.start(["mkdir", ".", "-C", directory]) }
+
+        expected_names = %w[readme.org dummy_icon.png] +
+                         Dir.children(Mkstack::TEMPLATES_DIR).grep(/\.css\z/)
+        expected_names.each do |name|
+          actual = File.join(directory, name)
+          _(File.file?(actual)).must_equal true
+          _(File.binread(actual)).must_equal File.binread(Mkstack.template_path(name))
+        end
+        _(File.exist?(File.join(directory, ".rsync_filter"))).must_equal false
+      end
+    end
+
     it "section directoryと基本templateを作る" do
       Dir.mktmpdir do |directory|
         capture_io { Mkstack::CLI.start(["mkdir", "c1_section", "-C", directory]) }
