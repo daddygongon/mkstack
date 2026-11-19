@@ -73,7 +73,7 @@ module Mkstack
       options = OPTIONS.dup
       options << "--dry-run" if @dry_run
       options.concat(extra_options)
-      options << "--filter=merge .rsync_filter" if File.file?(File.join(source, ".rsync_filter"))
+      options << "--filter=dir-merge .rsync_filter"
       options.concat(EXCLUDES.map { |pattern| "--exclude=#{pattern}" })
       options.concat(%w[-z --rsh=ssh]) if remote
 

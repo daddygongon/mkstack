@@ -130,10 +130,20 @@ module Mkstack
     map "-h" => :help
     map "--help" => :help
     map "--tasks" => :help
+    map "-v" => :version
+    map "--version" => :version
+    map "-k" => :kick_off
+    map "-p" => :push
+    map "-r" => :rsync_public
 
     desc "help [COMMAND]", "利用できるコマンドの一覧または詳細を表示する"
     def help(command = nil, subcommand = false)
       super
+    end
+
+    desc "version", "versionを表示する"
+    def version
+      say "mkstack #{Mkstack::VERSION}"
     end
 
     class_option :directory,

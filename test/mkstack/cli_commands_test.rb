@@ -6,7 +6,7 @@ require "tmpdir"
 require "yaml"
 
 describe Mkstack::CLI do
-  COMMANDS = %w[kick_off mkdir mk_light_table mk_link mk_canvas rsync_public push].freeze
+  COMMANDS = %w[version kick_off mkdir mk_light_table mk_link mk_canvas rsync_public push].freeze
 
   def build_cli(options = {})
     Mkstack::CLI.new([], options, {})
@@ -45,6 +45,25 @@ describe Mkstack::CLI do
 
     _(output).must_include "mkstack commands"
     _(output).must_match(/^\s+\S+\s+mk_canvas SUBCOMMAND/m)
+  end
+
+  it "versionとそのaliasでversionを表示する" do
+    %w[version -v --version].each do |argument|
+      output, = capture_io { Mkstack::CLI.start([argument]) }
+
+      _(output).must_equal "mkstack #{Mkstack::VERSION}\n"
+    end
+  end
+
+  it "短縮形を各commandへmapする" do
+    {
+      "-h" => :help,
+      "-k" => :kick_off,
+      "-p" => :push,
+      "-r" => :rsync_public
+    }.each do |short_option, command|
+      _(Mkstack::CLI.map.fetch(short_option)).must_equal command
+    end
   end
 
   describe "kick_off" do
