@@ -110,18 +110,42 @@ describe Mkstack::CLI do
   end
 
   describe "mkdir" do
-    it ".を指定するとreadme，dummy icon，全CSS templateを作業directoryへ複製する" do
+    it ".を指定するとreadme，dummy icon，hidden CSS templateを作業directoryへ複製する" do
       Dir.mktmpdir do |directory|
         capture_io { Mkstack::CLI.start(["mkdir", ".", "-C", directory]) }
 
         expected_names = %w[readme.org dummy_icon.png] +
-                         Dir.children(Mkstack::TEMPLATES_DIR).grep(/\.css\z/)
+                         Dir.children(Mkstack::TEMPLATES_DIR).grep(/\A\..*\.css\z/)
         expected_names.each do |name|
           actual = File.join(directory, name)
           _(File.file?(actual)).must_equal true
           _(File.binread(actual)).must_equal File.binread(Mkstack.template_path(name))
         end
+        Dir.children(Mkstack::TEMPLATES_DIR).grep(/\A[^.].*\.css\z/).each do |name|
+          _(File.exist?(File.join(directory, name))).must_equal false
+        end
         _(File.exist?(File.join(directory, ".rsync_filter"))).must_equal false
+      end
+    end
+
+    it ".を指定したとき作業directoryの同名fileを上書きしない" do
+      Dir.mktmpdir do |directory|
+        preserved = {
+          "readme.org" => "custom readme\n",
+          ".style.css" => "custom style\n"
+        }
+        preserved.each do |name, content|
+          File.write(File.join(directory, name), content)
+        end
+
+        output, = capture_io { Mkstack::CLI.start(["mkdir", ".", "-C", directory]) }
+
+        preserved.each do |name, content|
+          _(File.read(File.join(directory, name))).must_equal content
+          _(output).must_include "既存fileをスキップしました: #{File.join(directory, name)}"
+        end
+        _(File.file?(File.join(directory, "dummy_icon.png"))).must_equal true
+        _(File.file?(File.join(directory, ".theme.css"))).must_equal true
       end
     end
 

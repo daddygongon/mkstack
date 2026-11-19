@@ -171,7 +171,8 @@ module Mkstack
       if target == working_directory
         copy_templates(
           %w[readme.org dummy_icon.png] + css_template_names,
-          target
+          target,
+          overwrite: false
         )
         return
       end
@@ -259,17 +260,22 @@ module Mkstack
         raise Error, "引数はdry_runだけを指定できます: #{marker}"
       end
 
-      def copy_templates(names, destination)
+      def copy_templates(names, destination, overwrite: true)
         names.each do |name|
           source = Mkstack.template_path(name)
           target = File.join(destination, name)
+          if !overwrite && File.exist?(target)
+            say "既存fileをスキップしました: #{target}", :yellow
+            next
+          end
+
           say "#{source} -> #{target}"
           FileUtils.cp(source, target)
         end
       end
 
       def css_template_names
-        Dir.children(Mkstack::TEMPLATES_DIR).grep(/\.css\z/).sort
+        Dir.children(Mkstack::TEMPLATES_DIR).grep(/\A\..*\.css\z/).sort
       end
 
       def run_external(*command)
