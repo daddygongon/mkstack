@@ -247,6 +247,23 @@ describe Mkstack::CLI do
         _(calls).must_equal [["mk_link.rb", "--config", File.join(project_root, ".hc_config.yaml")]]
       end
     end
+
+    it "--verboseをlink更新scriptへ渡す" do
+      Dir.mktmpdir do |directory|
+        write_configuration(directory)
+        calls = []
+        runner = Object.new
+        runner.define_singleton_method(:run) { |*arguments| calls << arguments }
+
+        Mkstack::ScriptRunner.stub(:new, runner) do
+          build_cli(directory: directory, verbose: true).mk_link
+        end
+
+        _(calls).must_equal [
+          ["mk_link.rb", "--config", File.join(directory, ".hc_config.yaml"), "--verbose"]
+        ]
+      end
+    end
   end
 
   describe "mk_canvas" do

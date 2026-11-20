@@ -198,9 +198,11 @@ module Mkstack
     end
 
     desc "mk_link", "light_tableの順序からOrgのprev/up/next linkを更新する"
+    method_option :verbose, type: :boolean, default: false, desc: "Emacsの出力を含む詳細を表示する"
     def mk_link
       ensure_configuration!
-      runner.run("mk_link.rb", "--config", configuration.path)
+      arguments = options[:verbose] ? ["--verbose"] : []
+      runner.run("mk_link.rb", "--config", configuration.path, *arguments)
     end
 
     desc "mk_canvas SUBCOMMAND ...ARGS", "Orgからcanvas.htmlを段階的に生成する"

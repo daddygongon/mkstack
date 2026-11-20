@@ -1,10 +1,14 @@
 require 'yaml'
 require 'optparse'
+require 'open3'
 
-options = { config: '.hc_config.yaml' }
+options = { config: '.hc_config.yaml', verbose: false }
 OptionParser.new do |parser|
   parser.on('--config PATH', String, '設定ファイル') do |path|
     options[:config] = path
+  end
+  parser.on('--verbose', 'Emacsの出力を含む詳細を表示する') do
+    options[:verbose] = true
   end
 end.parse!
 
@@ -19,7 +23,7 @@ if File.exist?(canvas_file)
 else
   up = config[:source_html]
 end
-p up
+puts "up: #{up}" if options[:verbose]
 
 # nodes の掲載順に，HTML と対応する Org ファイルを抽出する．
 hrefs = data.fetch(:nodes).filter_map.with_index do |node, node_i|
@@ -39,7 +43,8 @@ div = hrefs.size
 org_files = []
 
 hrefs.each_with_index do |f, i|
-  p org_file = f.sub(/\.html\z/, '.org')
+  org_file = f.sub(/\.html\z/, '.org')
+  puts "更新: #{org_file}" if options[:verbose]
   org_files << org_file
   
   layers = f.split('/').size-1
@@ -53,7 +58,7 @@ hrefs.each_with_index do |f, i|
   puts "[[file:#{up_move}#{hrefs[(i-1)%div]}][prev_button]]
 [[file:#{up_move}#{up}][up_button]]
 [[file:#{up_move}#{hrefs[(i+1)%div]}][next_button]]
-"
+" if options[:verbose]
   File.write(org_file, lines.join(""))
 end
 
@@ -61,6 +66,44 @@ emacs_args = [
   '--batch', '-l', File.expand_path('~/.emacs.d/init.el'),
   '--eval', '(setq inhibit-message t message-log-max nil)'
 ]
-org_files.each { |org_file| emacs_args.concat [org_file, '-f', 'org-html-export-to-html'] }
+org_files.each do |org_file|
+  marker = "MKSTACK_EXPORTING\t#{org_file}\n".dump
+  emacs_args.concat ['--eval', "(princ #{marker})", org_file, '-f', 'org-html-export-to-html']
+end
 emacs_args << '--kill'
-abort 'OrgからHTMLへの変換に失敗しました．' unless system('emacs', *emacs_args)
+
+begin
+  stdout, stderr, status = Open3.capture3('emacs', *emacs_args)
+rescue Errno::ENOENT
+  warn 'OrgからHTMLへの変換に失敗しました．'
+  warn '原因: Emacs commandが見つかりません．EmacsのinstallとPATHを確認してください．'
+  exit 1
+end
+if status.success?
+  puts "Orgリンクを更新し，HTMLへ変換しました（#{org_files.size} files）．"
+  exit
+end
+
+failed_file = stdout.scan(/^MKSTACK_EXPORTING\t(.+)$/).last&.first
+broken_link = stderr.match(/Unable to resolve link:\s+\\?"([^"\\]+)\\?"/)&.captures&.first
+emacs_error = stderr.lines.find { |line| line.match?(/^Error:/) }&.strip
+
+warn 'OrgからHTMLへの変換に失敗しました．'
+warn "対象: #{failed_file}" if failed_file
+if broken_link
+  warn "原因: Orgリンクを解決できません: #{broken_link}"
+elsif emacs_error
+  warn "原因: #{emacs_error}"
+else
+  warn '原因: Emacsがエラー終了しました．'
+end
+
+if options[:verbose]
+  warn "\n--- Emacs stdout ---"
+  warn stdout unless stdout.empty?
+  warn "\n--- Emacs stderr ---"
+  warn stderr unless stderr.empty?
+else
+  warn '詳細を表示するには `mkstack mk_link --verbose` を実行してください．'
+end
+exit 1
