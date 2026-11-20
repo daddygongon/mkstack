@@ -46,13 +46,13 @@ hrefs.each_with_index do |f, i|
   up_move= '../'*layers
   lines = File.readlines(org_file)
   lines.each_with_index do |line, j|
-    lines[j] = "[[#{up_move}#{hrefs[(i-1)%div]}][prev_button]]\n" if line.include?('[prev_button]]')
-    lines[j] = "[[#{up_move}#{up}][up_button]]\n" if line.include?('[up_button]]')
-    lines[j] = "[[#{up_move}#{hrefs[(i+1)%div]}][next_button]]\n" if line.include?('[next_button]]')
+    lines[j] = "[[file:#{up_move}#{hrefs[(i-1)%div]}][prev_button]]\n" if line.include?('[prev_button]]')
+    lines[j] = "[[file:#{up_move}#{up}][up_button]]\n" if line.include?('[up_button]]')
+    lines[j] = "[[file:#{up_move}#{hrefs[(i+1)%div]}][next_button]]\n" if line.include?('[next_button]]')
   end
-  puts "[[#{up_move}#{hrefs[(i-1)%div]}][prev_button]]
-[[#{up_move}#{up}][up_button]]
-[[#{up_move}#{hrefs[(i+1)%div]}][next_button]]
+  puts "[[file:#{up_move}#{hrefs[(i-1)%div]}][prev_button]]
+[[file:#{up_move}#{up}][up_button]]
+[[file:#{up_move}#{hrefs[(i+1)%div]}][next_button]]
 "
   File.write(org_file, lines.join(""))
 end
