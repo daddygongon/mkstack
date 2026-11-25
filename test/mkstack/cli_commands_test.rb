@@ -6,7 +6,7 @@ require "tmpdir"
 require "yaml"
 
 describe Mkstack::CLI do
-  COMMANDS = %w[version kick_off mkdir mk_light_table mk_link mk_canvas rsync_public push].freeze
+  COMMANDS = %w[version kick_off mkdir md_export mk_light_table mk_link mk_canvas rsync_public push].freeze
 
   def build_cli(options = {})
     Mkstack::CLI.new([], options, {})
@@ -106,14 +106,32 @@ describe Mkstack::CLI do
       end
     end
 
+    it "--markdownで設定とMarkdown用root file一式を作る" do
+      Dir.mktmpdir do |directory|
+        capture_io { Mkstack::CLI.start(["kick_off", "--markdown", "-C", directory]) }
+
+        config = YAML.safe_load_file(
+          File.join(directory, ".hc_config.yaml"),
+          permitted_classes: [Symbol],
+          aliases: true
+        )
+        _(config[:source_format]).must_equal "markdown"
+        %w[readme.md dummy_icon.png .style.css .style_w_link_button.css .theme.css .rsync_filter].each do |name|
+          _(File.file?(File.join(directory, name))).must_equal true
+        end
+        _(File.exist?(File.join(directory, "readme.org"))).must_equal false
+      end
+    end
+
     it "既存の設定fileを上書きしない" do
       Dir.mktmpdir do |directory|
         config_path = File.join(directory, ".hc_config.yaml")
         File.write(config_path, "---\n:lecture: customized\n")
 
-        output, = capture_io { Mkstack::CLI.start(["kick_off", "-C", directory]) }
+        output, = capture_io { Mkstack::CLI.start(["kick_off", "--markdown", "-C", directory]) }
 
         _(File.read(config_path)).must_equal "---\n:lecture: customized\n"
+        _(File.exist?(File.join(directory, "readme.md"))).must_equal false
         _(output).must_include "上書きしていません"
       end
     end
@@ -150,6 +168,33 @@ describe Mkstack::CLI do
           _(File.exist?(File.join(directory, name))).must_equal false
         end
         _(File.exist?(File.join(directory, ".rsync_filter"))).must_equal false
+      end
+    end
+
+    it "project設定がmarkdownならMarkdown用templateを配置する" do
+      Dir.mktmpdir do |directory|
+        Mkstack::Configuration.new(directory).install(source_format: "markdown")
+
+        capture_io { Mkstack::CLI.start(["mkdir", "c1_section", "-C", directory]) }
+
+        section = File.join(directory, "c1_section")
+        %w[readme.md dummy_icon.png .style.css .style_w_link_button.css .theme.css .rsync_filter].each do |name|
+          _(File.file?(File.join(section, name))).must_equal true
+        end
+        _(File.exist?(File.join(section, "readme.org"))).must_equal false
+      end
+    end
+
+    it "nested directoryから親projectのsource_formatを参照する" do
+      Dir.mktmpdir do |directory|
+        Mkstack::Configuration.new(directory).install(source_format: "markdown")
+        nested = File.join(directory, "c1_section")
+        FileUtils.mkdir_p(nested)
+
+        capture_io { Mkstack::CLI.start(["mkdir", "c2_topic", "-C", nested]) }
+
+        _(File.file?(File.join(nested, "c2_topic", "readme.md"))).must_equal true
+        _(File.exist?(File.join(nested, "c2_topic", "readme.org"))).must_equal false
       end
     end
 

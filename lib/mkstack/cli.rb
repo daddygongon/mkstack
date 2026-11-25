@@ -5,6 +5,7 @@ require "thor"
 
 require_relative "canvas_builder"
 require_relative "configuration"
+require_relative "markdown_exporter"
 require_relative "script_runner"
 require_relative "sync"
 
@@ -228,20 +229,33 @@ module Mkstack
                  type: :string,
                  desc: "処理対象ディレクトリ（default: current directory）"
 
-    desc "kick_off", "設定fileとstack directoryの初期style fileを配置"
+    desc "kick_off", "設定fileとstack directoryの初期fileを配置"
     long_desc <<~DESC, wrap: false
-      project rootへ.hc_config.yamlと初期style fileを配置します．
+      project rootへ.hc_config.yamlと初期fileを配置します．
+      --markdownを指定するとsource_formatをmarkdownに設定し，readme.mdを配置します．
+      指定しない場合は従来どおりOrg baseになります．
       親directoryに設定fileがあればそのdirectoryを対象とし，既存の設定fileは上書きしません．
 
       使用例:
         mkstack kick_off
+        mkstack kick_off --markdown
         mkstack kick_off -C path/to/project
     DESC
+    method_option :markdown, type: :boolean, default: false,
+                             desc: "Markdown baseのprojectを作成"
     def kick_off
-      config_created = configuration.install
-      copy_templates(%w[.style.css .rsync_filter .theme.css], configuration_root)
+      requested_format = options[:markdown] ? "markdown" : "org"
+      config_created = configuration.install(source_format: requested_format)
+      format = configuration.source_format
+      if format == "markdown"
+        copy_templates(project_template_names(format), configuration_root, overwrite: false)
+      else
+        copy_templates(%w[.style.css .rsync_filter .theme.css], configuration_root)
+      end
       say "Kick off hyper card setups"
-      File.readlines(Mkstack.template_path("readme.org")).last(3).each { |line| say line.chomp }
+      File.readlines(Mkstack.template_path(readme_template_name(format))).last(3).each do |line|
+        say line.chomp
+      end
       say
       if config_created
         say "注意: #{configuration.path}をdummy値で作成しました．実際のpath，file名，URLへ編集してください．", :yellow
@@ -252,7 +266,8 @@ module Mkstack
 
     desc "mkdir [DIR]", "新しいsubdirectoryと基本templateを作る"
     long_desc <<~DESC, wrap: false
-      対象directory内に新しいsubdirectoryを作り，Org，画像，styleのtemplateを配置します．
+      対象directory内に新しいsubdirectoryを作り，設定されたmarkup，画像，styleのtemplateを配置します．
+      markupは最寄りの.hc_config.yamlにあるsource_formatを参照し，設定がなければOrgを使います．
       DIRに.を指定した場合は対象directoryへ不足しているtemplateだけを配置します．
       DIRを省略した場合はnew_sub_dirを作成します．
 
@@ -262,9 +277,10 @@ module Mkstack
     DESC
     def mkdir(directory_name = "new_sub_dir")
       target = File.expand_path(directory_name, working_directory)
+      format = project_source_format
       if target == working_directory
         copy_templates(
-          %w[readme.org dummy_icon.png] + css_template_names,
+          [readme_template_name(format), "dummy_icon.png"] + css_template_names,
           target,
           overwrite: false
         )
@@ -274,10 +290,22 @@ module Mkstack
       raise Error, "directoryがすでに存在します: #{target}" if File.exist?(target)
 
       FileUtils.mkdir_p(target)
-      copy_templates(
-        %w[readme.org dummy_icon.png .style.css .style_w_link_button.css .theme.css .rsync_filter],
-        target
-      )
+      copy_templates(project_template_names(format), target)
+    end
+
+    desc "md_export", "Markdown文書をPandocでHTMLへ変換"
+    long_desc <<~DESC, wrap: false
+      対象directory内のMarkdown fileをPandocで同名のHTML fileへ変換します．
+      Markdown原本は変更しません．-Lで対象fileを探索する最大階層を指定できます．
+
+      使用例:
+        mkstack md_export
+        mkstack md_export -C test/fixtures/md_stack -L 2
+    DESC
+    method_option :level, aliases: "-L", type: :numeric, default: 2,
+                          desc: "対象fileを探索する最大階層"
+    def md_export
+      MarkdownExporter.new(root: working_directory, max_level: options[:level].to_i).call
     end
 
     desc "mk_light_table", "light_table.yamlとHTMLを生成"
@@ -308,7 +336,8 @@ module Mkstack
     long_desc <<~DESC, wrap: false
       .semi_lattice/semi_lattice.yamlのnodes順に，各Org fileのprev／up／next linkを更新します．
       更新後はEmacsで対象Org fileをHTMLへexportします．
-      --verboseを指定すると更新対象とEmacsの詳細出力を表示します．
+      処理中は対象Org fileと設定するlinkを表示し，markerがない項目には手修正用のlinkを表示します．
+      --verboseを指定するとEmacsの詳細出力も表示します．
 
       使用例:
         mkstack mk_link
@@ -417,6 +446,28 @@ module Mkstack
 
       def css_template_names
         Dir.children(Mkstack::TEMPLATES_DIR).grep(/\A\..*\.css\z/).sort
+      end
+
+      def project_source_format
+        root = Configuration.find_root(working_directory)
+        return "org" unless root
+
+        Configuration.new(root).source_format
+      end
+
+      def readme_template_name(source_format)
+        source_format == "markdown" ? "readme.md" : "readme.org"
+      end
+
+      def project_template_names(source_format)
+        [
+          readme_template_name(source_format),
+          "dummy_icon.png",
+          ".style.css",
+          ".style_w_link_button.css",
+          ".theme.css",
+          ".rsync_filter"
+        ]
       end
 
       def run_external(*command)

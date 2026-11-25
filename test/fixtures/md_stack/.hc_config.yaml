@@ -1,0 +1,11 @@
+---
+:source_format: markdown
+:year: 2026
+:lecture: demo
+:source_html: demo.html
+:glob_extensions: demo*/**/*.html
+:public_repository_dir: "../demo_public"
+:shared_dirs: []
+:server_info:
+  :server_ssh_path: demo@example.com:~/public_html
+  :server_url: https://example.com/demo

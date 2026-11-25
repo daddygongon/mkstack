@@ -78,9 +78,26 @@ build全体を中断します．Enterだけならdefaultの`y`になります．
 個別commandの末尾へ`-h`／`--help`を付けると，optionの意味と使用例を含む詳細helpを表示できます．
 別の作業directoryを対象にする場合は，共通option `-C PATH`を指定します．
 
-`kick_off`は`.hc_config.yaml`をdummy値で生成します．生成後に，実際の講義名，HTML
-file名，公開先path，server URLへ編集してください．既存の`.hc_config.yaml`は
-上書きしません．
+`kick_off`は`.hc_config.yaml`をdummy値で生成します．通常は
+`:source_format: org`となり，従来どおりOrg baseで開始します．Markdown baseで
+開始する場合は次のように明示します．
+
+```bash
+mkstack kick_off --markdown
+```
+
+この場合は`:source_format: markdown`を設定し，project rootへ`readme.md`，画像，
+CSS，rsync filterを配置します．生成後に，実際の講義名，HTML file名，公開先path，
+server URLへ編集してください．既存の`.hc_config.yaml`は上書きしません．
+
+以後の`mkdir`は最寄りの`.hc_config.yaml`にある`source_format`を参照します．
+Markdown projectでは`readme.md`，Org projectでは`readme.org`と，それぞれに必要な
+画像，CSS，rsync filterを新しいdirectoryへ配置します．設定キーがない旧projectは
+Org projectとして扱います．MarkdownをHTMLへ変換するには次を実行します．
+
+```bash
+mkstack md_export -L 2
+```
 
 `mk_canvas`，`mkdir`，`mk_light_table`，`mk_link`は，起動したdirectoryを基準に
 相対pathを解決します．`-C PATH`を指定した場合は，そのdirectoryが基準です．

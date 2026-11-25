@@ -48,6 +48,37 @@ describe Mkstack::Configuration do
     end
   end
 
+  it "markdownを指定してinstallするとsource_formatを設定する" do
+    Dir.mktmpdir do |directory|
+      configuration = Mkstack::Configuration.new(directory)
+
+      _(configuration.install(source_format: "markdown")).must_equal true
+
+      _(configuration.source_format).must_equal "markdown"
+      _(configuration.load[:source_format]).must_equal "markdown"
+    end
+  end
+
+  it "source_formatがない旧設定をorgとして扱う" do
+    Dir.mktmpdir do |directory|
+      configuration = Mkstack::Configuration.new(directory)
+      File.write(configuration.path, "---\n:lecture: legacy\n")
+
+      _(configuration.source_format).must_equal "org"
+    end
+  end
+
+  it "未知のsource_formatを拒否する" do
+    Dir.mktmpdir do |directory|
+      configuration = Mkstack::Configuration.new(directory)
+      File.write(configuration.path, "---\n:source_format: textile\n")
+
+      error = _ { configuration.source_format }.must_raise Mkstack::Error
+
+      _(error.message).must_include "orgまたはmarkdown"
+    end
+  end
+
   it "旧sample名を正本templateへのsymbolic linkとして保つ" do
     sample = Mkstack.template_path("hc_config.yaml~sample")
 

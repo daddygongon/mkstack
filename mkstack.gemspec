@@ -24,10 +24,11 @@ Gem::Specification.new do |spec|
   # See: https://guides.rubygems.org/mfa-requirement-opt-in/
   # spec.metadata["rubygems_mfa_required"] = "true"
 
-  # Specify which files should be added to the gem when it is released.
-  # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
+  # Include tracked files and non-ignored new files so a local build from the
+  # working tree does not omit newly added runtime files before the first commit.
   gemspec = File.basename(__FILE__)
-  spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
+  git_files = %w[git ls-files -z --cached --others --exclude-standard]
+  spec.files = IO.popen(git_files, chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).reject do |f|
       (f == gemspec) ||
         f.start_with?(*%w[bin/ docs/ Gemfile .gitignore test/])

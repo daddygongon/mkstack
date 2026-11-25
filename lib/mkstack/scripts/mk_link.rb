@@ -23,7 +23,8 @@ if File.exist?(canvas_file)
 else
   up = config[:source_html]
 end
-puts "up: #{up}" if options[:verbose]
+puts "link順: #{semi_lattice_file}"
+puts "up link: #{up}"
 
 # nodes の掲載順に，HTML と対応する Org ファイルを抽出する．
 hrefs = data.fetch(:nodes).filter_map.with_index do |node, node_i|
@@ -41,27 +42,42 @@ end
 
 div = hrefs.size
 org_files = []
+puts "更新対象: #{div} files"
 
 hrefs.each_with_index do |f, i|
   org_file = f.sub(/\.html\z/, '.org')
-  puts "更新: #{org_file}" if options[:verbose]
   org_files << org_file
-  
+
   layers = f.split('/').size-1
   up_move= '../'*layers
+  links = {
+    'prev_button' => "[[file:#{up_move}#{hrefs[(i-1)%div]}][prev_button]]",
+    'up_button' => "[[file:#{up_move}#{up}][up_button]]",
+    'next_button' => "[[file:#{up_move}#{hrefs[(i+1)%div]}][next_button]]"
+  }
+  updated = Hash.new(0)
   lines = File.readlines(org_file)
   lines.each_with_index do |line, j|
-    lines[j] = "[[file:#{up_move}#{hrefs[(i-1)%div]}][prev_button]]\n" if line.include?('[prev_button]]')
-    lines[j] = "[[file:#{up_move}#{up}][up_button]]\n" if line.include?('[up_button]]')
-    lines[j] = "[[file:#{up_move}#{hrefs[(i+1)%div]}][next_button]]\n" if line.include?('[next_button]]')
+    links.each do |button, link|
+      next unless line.include?("[#{button}]]")
+
+      lines[j] = "#{link}\n"
+      updated[button] += 1
+    end
   end
-  puts "[[file:#{up_move}#{hrefs[(i-1)%div]}][prev_button]]
-[[file:#{up_move}#{up}][up_button]]
-[[file:#{up_move}#{hrefs[(i+1)%div]}][next_button]]
-" if options[:verbose]
+
+  puts "対象: #{org_file}"
+  links.each do |button, link|
+    if updated[button].positive?
+      puts "  更新: #{link}"
+    else
+      puts "  未更新（#{button} markerなし）: #{link}"
+    end
+  end
   File.write(org_file, lines.join(""))
 end
 
+puts "HTML変換: #{org_files.size} files"
 emacs_args = [
   '--batch', '-l', File.expand_path('~/.emacs.d/init.el'),
   '--eval', '(setq inhibit-message t message-log-max nil)'
