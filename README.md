@@ -74,7 +74,8 @@ build全体を中断します．Enterだけならdefaultの`y`になります．
 
 `mkstack -h`，`mkstack -T`でtop-levelのsubcommand一覧を，
 `mkstack mk_canvas -h`で`mk_canvas`のsubcommand一覧を表示できます．
-`mkstack mk_canvas graph -h`のように，個別commandのhelpも表示できます．
+`mkstack mk_light_table --help`や`mkstack mk_canvas graph -h`のように，
+個別commandの末尾へ`-h`／`--help`を付けると，optionの意味と使用例を含む詳細helpを表示できます．
 別の作業directoryを対象にする場合は，共通option `-C PATH`を指定します．
 
 `kick_off`は`.hc_config.yaml`をdummy値で生成します．生成後に，実際の講義名，HTML

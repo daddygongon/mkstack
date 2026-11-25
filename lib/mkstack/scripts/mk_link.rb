@@ -7,7 +7,7 @@ OptionParser.new do |parser|
   parser.on('--config PATH', String, '設定ファイル') do |path|
     options[:config] = path
   end
-  parser.on('--verbose', 'Emacsの出力を含む詳細を表示する') do
+  parser.on('--verbose', 'Emacsの出力を含む詳細を表示') do
     options[:verbose] = true
   end
 end.parse!

@@ -44,34 +44,83 @@ module Mkstack
                  default: 2,
                  desc: "対象ファイルを探索する最大階層"
 
-    desc "export", "Org文書からHTMLファイルを生成する"
+    desc "export", "Org文書からHTMLファイルを生成"
+    long_desc <<~DESC, wrap: false
+      対象directory内のOrg fileについてprev／up／next linkを更新し，EmacsでHTMLへexportします．
+      -Lで対象fileを探索する最大階層を指定できます．前工程は自動実行しません．
+
+      使用例:
+        mkstack mk_canvas export -L 2
+        mkstack mk_canvas export -C docs -L 3
+    DESC
     def export
       builder.export
     end
 
-    desc "graph", "HTMLファイル群からノード・エッジ定義を生成する"
+    desc "graph", "HTMLファイル群からノード・エッジ定義を生成"
+    long_desc <<~DESC, wrap: false
+      対象directory内のHTML fileを探索し，.semi_lattice/dir_node_edge.yamlを生成します．
+      -Lで対象fileを探索する最大階層を指定できます．HTMLがない場合はexportの実行を案内します．
+
+      使用例:
+        mkstack mk_canvas graph -L 2
+        mkstack mk_canvas graph -C docs -L 3
+    DESC
     def graph
       builder.graph
     end
 
-    desc "layout", "ノード・エッジ定義に表示座標を付与する"
+    desc "layout", "ノード・エッジ定義に表示座標を付与"
+    long_desc <<~DESC, wrap: false
+      .semi_lattice/dir_node_edge.yamlをhc view -nへ渡し，
+      座標付きの.semi_lattice/semi_lattice.yamlを生成します．前工程は自動実行しません．
+
+      使用例:
+        mkstack mk_canvas layout
+        mkstack mk_canvas layout -C docs
+    DESC
     def layout
       builder.layout
     end
 
-    desc "render", "配置済みデータからcanvas.htmlを生成する"
+    desc "render", "配置済みデータからcanvas.htmlを生成"
+    long_desc <<~DESC, wrap: false
+      .semi_lattice/semi_lattice.yamlを読み込み，対象directoryにcanvas.htmlを生成します．
+      前工程は自動実行しません．
+
+      使用例:
+        mkstack mk_canvas render
+        mkstack mk_canvas render -C docs
+    DESC
     def render
       builder.render
     end
 
-    desc "view", "生成したcanvasを表示する"
+    desc "view", "生成したcanvasを表示"
+    long_desc <<~DESC, wrap: false
+      対象directoryにある生成済みcanvas.htmlをhc viewで表示します．
+      canvas.htmlがない場合はrenderの実行を案内します．
+
+      使用例:
+        mkstack mk_canvas view
+        mkstack mk_canvas view -C docs
+    DESC
     def view
       builder.view
     end
 
-    desc "build", "canvas.htmlを対話形式で段階的に生成する（default）"
-    method_option :open, aliases: "--view", type: :boolean, default: false, desc: "生成後にcanvasを表示する"
-    method_option :yes, aliases: "-y", type: :boolean, default: false, desc: "確認せず全工程を実行する"
+    desc "build", "canvas.htmlを対話形式で段階的に生成（default）"
+    long_desc <<~DESC, wrap: false
+      export，graph，layout，renderの順に，各工程を実行するか確認しながらcanvas.htmlを生成します．
+      -y／--yesを指定すると確認を省略し，--openを指定すると生成後にcanvasを表示します．
+      mk_canvasのsubcommandを省略した場合もbuildを実行します．
+
+      使用例:
+        mkstack mk_canvas build -L 2
+        mkstack mk_canvas build -L 3 --yes --open
+    DESC
+    method_option :open, aliases: "--view", type: :boolean, default: false, desc: "生成後にcanvasを表示"
+    method_option :yes, aliases: "-y", type: :boolean, default: false, desc: "確認せず全工程を実行"
     def build
       canvas_builder = builder
       BUILD_STEPS.each do |stage, description|
@@ -123,6 +172,8 @@ module Mkstack
   end
 
   class CLI < Thor
+    TRAILING_HELP_OPTIONS = %w[-h --help].freeze
+
     package_name "mkstack"
     default_task :help
     remove_command :tree
@@ -136,12 +187,38 @@ module Mkstack
     map "-p" => :push
     map "-r" => :rsync_public
 
-    desc "help [COMMAND]", "利用できるコマンドの一覧または詳細を表示する"
+    class << self
+      def start(given_args = ARGV, config = {})
+        super(normalize_trailing_help(given_args), config)
+      end
+
+      private
+
+      def normalize_trailing_help(given_args)
+        arguments = given_args.dup
+        return arguments unless arguments.length > 1 && TRAILING_HELP_OPTIONS.include?(arguments.last)
+
+        command = map.fetch(arguments.first, arguments.first).to_s
+        return arguments if command == "help" || subcommands.include?(command)
+        return arguments unless all_commands.key?(normalize_command_name(command))
+
+        ["help", command]
+      end
+    end
+
+    desc "help [COMMAND]", "利用できるコマンドの一覧または詳細を表示"
     def help(command = nil, subcommand = false)
       super
     end
 
-    desc "version", "versionを表示する"
+    desc "version", "versionを表示"
+    long_desc <<~DESC, wrap: false
+      インストールされているmkstackのversionを表示します．
+
+      使用例:
+        mkstack version
+        mkstack --version
+    DESC
     def version
       say "mkstack #{Mkstack::VERSION}"
     end
@@ -151,7 +228,15 @@ module Mkstack
                  type: :string,
                  desc: "処理対象ディレクトリ（default: current directory）"
 
-    desc "kick_off", "設定fileとstack directoryの初期style fileを配置する"
+    desc "kick_off", "設定fileとstack directoryの初期style fileを配置"
+    long_desc <<~DESC, wrap: false
+      project rootへ.hc_config.yamlと初期style fileを配置します．
+      親directoryに設定fileがあればそのdirectoryを対象とし，既存の設定fileは上書きしません．
+
+      使用例:
+        mkstack kick_off
+        mkstack kick_off -C path/to/project
+    DESC
     def kick_off
       config_created = configuration.install
       copy_templates(%w[.style.css .rsync_filter .theme.css], configuration_root)
@@ -166,6 +251,15 @@ module Mkstack
     end
 
     desc "mkdir [DIR]", "新しいsubdirectoryと基本templateを作る"
+    long_desc <<~DESC, wrap: false
+      対象directory内に新しいsubdirectoryを作り，Org，画像，styleのtemplateを配置します．
+      DIRに.を指定した場合は対象directoryへ不足しているtemplateだけを配置します．
+      DIRを省略した場合はnew_sub_dirを作成します．
+
+      使用例:
+        mkstack mkdir c1_new_section
+        mkstack mkdir . -C docs
+    DESC
     def mkdir(directory_name = "new_sub_dir")
       target = File.expand_path(directory_name, working_directory)
       if target == working_directory
@@ -186,9 +280,22 @@ module Mkstack
       )
     end
 
-    desc "mk_light_table", "light_table.yamlとHTMLを生成する"
-    method_option :level, aliases: "-L", type: :numeric, desc: "探索する最大階層"
-    method_option :generate_html, type: :boolean, default: true, desc: "HTMLも生成する"
+    desc "mk_light_table", "light_table.yamlとHTMLを生成"
+    long_desc <<~DESC, wrap: false
+      対象directoryのHTML／画像fileを探索し，light_table.yamlと一覧HTMLを生成します．
+      -Lはtree -Lと同じ数え方で探索階層を指定します．省略時は設定のglob_extensionsを使用します．
+      --no-generate-htmlを指定するとlight_table.yamlだけを生成します．
+      設定fileは対象directoryから親へ遡って探索し，生成物は対象directoryへ配置します．
+
+      使用例:
+        mkstack mk_light_table
+        mkstack mk_light_table -L 3
+        mkstack mk_light_table -C docs --no-generate-html
+    DESC
+    method_option :level, aliases: "-L", type: :numeric,
+                          desc: "探索する最大階層（tree -Lと同じ数え方）"
+    method_option :generate_html, type: :boolean, default: true,
+                                  desc: "light_table.yamlから一覧HTMLも生成"
     def mk_light_table
       ensure_configuration!
       arguments = options[:level] ? ["-L", options[:level].to_i] : []
@@ -197,25 +304,57 @@ module Mkstack
       runner.run("generate_html.rb") if options[:generate_html]
     end
 
-    desc "mk_link", "light_tableの順序からOrgのprev/up/next linkを更新する"
-    method_option :verbose, type: :boolean, default: false, desc: "Emacsの出力を含む詳細を表示する"
+    desc "mk_link", "semi_lattice.yamlのnodes順にOrgのprev/up/next linkを更新"
+    long_desc <<~DESC, wrap: false
+      .semi_lattice/semi_lattice.yamlのnodes順に，各Org fileのprev／up／next linkを更新します．
+      更新後はEmacsで対象Org fileをHTMLへexportします．
+      --verboseを指定すると更新対象とEmacsの詳細出力を表示します．
+
+      使用例:
+        mkstack mk_link
+        mkstack mk_link --verbose
+        mkstack mk_link -C docs
+    DESC
+    method_option :verbose, type: :boolean, default: false, desc: "Emacsの出力を含む詳細を表示"
     def mk_link
       ensure_configuration!
       arguments = options[:verbose] ? ["--verbose"] : []
       runner.run("mk_link.rb", "--config", configuration.path, *arguments)
     end
 
-    desc "mk_canvas SUBCOMMAND ...ARGS", "Orgからcanvas.htmlを段階的に生成する"
+    desc "mk_canvas SUBCOMMAND ...ARGS", "Orgからcanvas.htmlを段階的に生成"
     subcommand "mk_canvas", CanvasCLI
 
-    desc "rsync_public [dry_run]", "公開用repositoryへ同期する"
-    method_option :dry_run, aliases: "-n", type: :boolean, default: false
+    desc "rsync_public [dry_run]", "公開用repositoryへ同期"
+    long_desc <<~DESC, wrap: false
+      設定fileのprojectをpublic_repository_dirへrsyncで同期します．
+      -n／--dry-runまたは互換引数dry_runを指定すると，fileを変更せず同期内容だけを確認できます．
+      設定fileは対象directoryから親へ遡って探索します．
+
+      使用例:
+        mkstack rsync_public
+        mkstack rsync_public --dry-run
+        mkstack rsync_public dry_run
+    DESC
+    method_option :dry_run, aliases: "-n", type: :boolean, default: false,
+                            desc: "fileを変更せず同期内容を表示"
     def rsync_public(marker = nil)
       sync(marker).public_repository
     end
 
-    desc "push [dry_run]", "公開用repositoryをweb serverへ同期する"
-    method_option :dry_run, aliases: "-n", type: :boolean, default: false
+    desc "push [dry_run]", "公開用repositoryをweb serverへ同期"
+    long_desc <<~DESC, wrap: false
+      public_repository_dirを設定済みweb serverへrsyncで同期します．
+      本実行では同期後に公開URLをbrowserで開きます．dry-runではfileを変更せずbrowserも開きません．
+      -n／--dry-runのほか，互換引数dry_runも使用できます．
+
+      使用例:
+        mkstack push
+        mkstack push --dry-run
+        mkstack push dry_run
+    DESC
+    method_option :dry_run, aliases: "-n", type: :boolean, default: false,
+                            desc: "fileを変更せず同期内容を表示"
     def push(marker = nil)
       synchronizer = sync(marker)
       url = synchronizer.server
@@ -289,5 +428,5 @@ module Mkstack
     end
   end
 
-  CanvasCLI.commands.fetch("help").description = "利用できるサブコマンドの一覧または詳細を表示する"
+  CanvasCLI.commands.fetch("help").description = "利用できるサブコマンドの一覧または詳細を表示"
 end

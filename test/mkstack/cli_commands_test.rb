@@ -47,6 +47,31 @@ describe Mkstack::CLI do
     _(output).must_match(/^\s+\S+\s+mk_canvas SUBCOMMAND/m)
   end
 
+  it "各command末尾の-hと--helpで個別helpを表示する" do
+    (COMMANDS - ["mk_canvas"]).each do |command|
+      %w[-h --help].each do |help_option|
+        output, = capture_io { Mkstack::CLI.start([command, help_option]) }
+
+        _(output).must_include "Usage:"
+        _(output).must_include "mkstack #{command}"
+        _(output).must_include "Description:"
+        _(output).must_include "使用例:"
+      end
+    end
+  end
+
+  it "引数の後ろにあるhelp optionでもcommandを実行せず個別helpを表示する" do
+    Dir.mktmpdir do |directory|
+      output, = capture_io do
+        Mkstack::CLI.start(["mkdir", "c1_example", "-C", directory, "--help"])
+      end
+
+      _(output).must_include "mkdir [DIR]"
+      _(output).must_include "DIRに.を指定した場合"
+      _(File.exist?(File.join(directory, "c1_example"))).must_equal false
+    end
+  end
+
   it "versionとそのaliasでversionを表示する" do
     %w[version -v --version].each do |argument|
       output, = capture_io { Mkstack::CLI.start([argument]) }
@@ -185,6 +210,15 @@ describe Mkstack::CLI do
   end
 
   describe "mk_light_table" do
+    it "個別helpにoptionの意味と使用例を表示する" do
+      output, = capture_io { Mkstack::CLI.start(["mk_light_table", "--help"]) }
+
+      _(output).must_include "tree -Lと同じ数え方"
+      _(output).must_include "省略時は設定のglob_extensionsを使用"
+      _(output).must_include "--no-generate-htmlを指定するとlight_table.yamlだけを生成"
+      _(output).must_include "mkstack mk_light_table -C docs --no-generate-html"
+    end
+
     it "選択した作業directoryにYAMLとHTMLを生成する" do
       Dir.mktmpdir do |project_root|
         directory = File.join(project_root, "c1_section")
@@ -225,6 +259,13 @@ describe Mkstack::CLI do
   end
 
   describe "mk_link" do
+    it "helpにlink順の参照元を表示する" do
+      output, = capture_io { Mkstack::CLI.start(["help", "mk_link"]) }
+
+      _(output).must_include "semi_lattice.yamlのnodes順"
+      _(output).wont_include "light_tableの順序"
+    end
+
     it "起動directoryで，親にある設定fileを使ってlink更新scriptを呼び出す" do
       Dir.mktmpdir do |project_root|
         nested = File.join(project_root, "c1_section")
@@ -285,20 +326,22 @@ describe Mkstack::CLI do
         _(help_output).wont_match(/^\s+\S+\s+mk_canvas #{Regexp.escape(old_command)}(?:\s|$)/)
       end
       _(help_output).must_match(/^\s+\S+\s+mk_canvas help \[COMMAND\]/m)
-      _(help_output).must_include "利用できるサブコマンドの一覧または詳細を表示する"
+      _(help_output).must_include "利用できるサブコマンドの一覧または詳細を表示"
     end
 
-    it "help COMMANDとCOMMAND -hで個別helpを表示する" do
+    it "help COMMANDとCOMMAND末尾の-h／--helpで個別helpを表示する" do
       long_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "help", "render"]) }
       short_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "render", "-h"]) }
+      trailing_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "render", "--help"]) }
       build_output, = capture_io { Mkstack::CLI.start(["mk_canvas", "help", "build"]) }
 
-      [long_output, short_output].each do |output|
+      [long_output, short_output, trailing_output].each do |output|
         _(output).must_include "mk_canvas render"
-        _(output).must_include "配置済みデータからcanvas.htmlを生成する"
+        _(output).must_include "semi_lattice.yamlを読み込み"
+        _(output).must_include "使用例:"
       end
       _(build_output).must_include "--yes"
-      _(build_output).must_include "確認せず全工程を実行する"
+      _(build_output).must_include "確認せず全工程を実行"
     end
 
     it "各subcommandを対応する独立工程だけ実行する" do
